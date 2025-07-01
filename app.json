@@ -8,6 +8,11 @@
     "scheme": "alfaomega",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "expo": {
+      "web": {
+        "bundler": "metro"
+      }
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -32,6 +37,13 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Usamos tu ubicación incluso cuando la app está en segundo plano"
         }
       ]
     ],

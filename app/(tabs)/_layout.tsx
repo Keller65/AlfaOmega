@@ -1,45 +1,68 @@
 import { Tabs } from 'expo-router';
+import ProtectedLayout from '../ProtectedLayout';
 import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+import HomeIcon from '../../assets/icons/HomeIcon';
+import UsersIcon from '../../assets/icons/UsersIcon';
+import InvoicesIcon from '../../assets/icons/InvoicesIcon';
+import SettingsIcon from '../../assets/icons/SettingsIcon';
 
+export default function Layout() {
+  const colorScheme = useColorScheme();
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+    <ProtectedLayout>
+      <Tabs
+        screenOptions={{
+          // tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          tabBarActiveTintColor: "#09f", // Blue-800
+          headerShown: false,
+          // tabBarButton: HapticTab,
+          // tabBarBackground: TabBarBackground,
+          tabBarStyle: Platform.select({
+            ios: {
+              // Use a transparent background on iOS to show the blur effect
+              position: 'absolute',
+            },
+            default: {},
+          }),
+        }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Inicio',
+            tabBarIcon: ({ color }) => <HomeIcon size={26} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="explore"
+          options={{
+            title: 'Clientes',
+            tabBarIcon: ({ color }) => <UsersIcon size={26} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="invoices"
+          options={{
+            title: 'Facturas',
+            tabBarIcon: ({ color }) => <InvoicesIcon size={26} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Ajustes',
+            tabBarIcon: ({ color }) => <SettingsIcon size={26} color={color} />,
+          }}
+        />
+      </Tabs>
+    </ProtectedLayout>
   );
 }
