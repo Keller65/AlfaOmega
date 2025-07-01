@@ -1,8 +1,8 @@
-import { Slot } from "expo-router";
-import { AuthProvider } from "../context/auth";
 import { useFonts } from 'expo-font';
+import { Slot } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from "react";
+import { AuthProvider } from "../context/auth";
 
 SplashScreen.preventAutoHideAsync();
 

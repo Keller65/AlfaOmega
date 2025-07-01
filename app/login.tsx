@@ -1,12 +1,13 @@
 import * as Location from 'expo-location';
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, Button } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../context/auth";
 
 export default function Login() {
   const { user } = useAuth();
+  const router = useRouter();
   const [employeeCode, setEmployeeCode] = useState("");
   const [password, setPassword] = useState<string>("");
 
@@ -91,18 +92,17 @@ export default function Login() {
       >
         <Text className="text-white text-center font-[Poppins-Bold] leading-3">Iniciar Sesión</Text>
       </TouchableOpacity>
+
+      <View className='w-full flex items-center' style={{ marginTop: 100 }}>
+        <TouchableOpacity>
+          <Text style={{ color: '#09f' }} className="text-center font-[Poppins-Regular]">Configuracion</Text>
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", padding: 20 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: "center" },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    marginBottom: 12,
-    padding: 10,
-  },
 });

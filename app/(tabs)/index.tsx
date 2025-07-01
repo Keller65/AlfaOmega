@@ -2,7 +2,6 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/auth';
 import "../../global.css";
 
@@ -40,15 +39,6 @@ export default function HomeScreen() {
         console.error('Error fetching items', e);
       });
   }, []);
-
-  async function HostConfig() {
-    try {
-      const host = await AsyncStorage.getItem('host');
-      console.log('host: ', host);
-    } catch (error) {
-      console.error('Error clearing storage:', error);
-    }
-  }
 
   if (loading) {
     return (
