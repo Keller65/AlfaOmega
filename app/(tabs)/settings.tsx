@@ -2,10 +2,12 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native'
 import Constants from 'expo-constants'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '../../context/auth'
 
 const Settings = () => {
-  const [host, setHost] = useState('')
-  const [port, setPort] = useState('')
+  const { host, port, logout } = useAuth()
+  const [hostInput, setHostInput] = useState(host)
+  const [portInput, setPortInput] = useState(port)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -13,24 +15,24 @@ const Settings = () => {
     const loadData = async () => {
       const savedHost = await AsyncStorage.getItem('host')
       const savedPort = await AsyncStorage.getItem('port')
-      if (savedHost) setHost(savedHost)
-      if (savedPort) setPort(savedPort)
+      if (savedHost) setHostInput(savedHost)
+      if (savedPort) setPortInput(savedPort)
     }
     loadData()
   }, [])
 
   const saveHost = (value: string) => {
-    setHost(value)
+    setHostInput(value)
   }
 
   const savePort = (value: string) => {
-    setPort(value)
+    setPortInput(value)
   }
 
   const handleSave = async () => {
     setSaving(true)
-    await AsyncStorage.setItem('host', host)
-    await AsyncStorage.setItem('port', port)
+    await AsyncStorage.setItem('host', hostInput ?? '')
+    await AsyncStorage.setItem('port', portInput ?? '')
     setSaving(false)
     console.log('Host guardado:', host)
     console.log('Puerto guardado:', port)
@@ -54,7 +56,7 @@ const Settings = () => {
           <TextInput
             className="border rounded px-2 py-1 mb-2"
             placeholder="Ingrese el host"
-            value={host}
+            value={host ?? ''}
             onChangeText={saveHost}
             autoCapitalize="none"
           />
@@ -62,7 +64,7 @@ const Settings = () => {
           <TextInput
             className="border rounded px-2 py-1"
             placeholder="Ingrese el puerto"
-            value={port}
+            value={port ?? ''}
             onChangeText={savePort}
             keyboardType="numeric"
           />
@@ -78,7 +80,7 @@ const Settings = () => {
         </View>
       </View>
 
-      <TouchableOpacity className='w-full p-2'>
+      <TouchableOpacity className='w-full p-2' onPress={logout}>
         <Text className='text-red-500 text-center'>Cerrar Sesión</Text>
       </TouchableOpacity>
     </View>

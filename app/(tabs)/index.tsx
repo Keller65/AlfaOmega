@@ -2,13 +2,18 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import "../../global.css";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/auth';
+import "../../global.css";
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const employeeCode = user?.employeeCode;
+
+  console.log('user: ', employeeCode);
 
   function FetchProducts() {
     fetch('http://200.115.188.54:4325/sap/Items/Active')

@@ -32,7 +32,7 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
+    <AuthProvider >
       <Slot />
     </AuthProvider>
   );

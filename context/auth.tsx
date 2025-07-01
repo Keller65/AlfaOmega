@@ -5,6 +5,7 @@ type User = {
   id: string;
   name: string;
   email: string;
+  employeeCode?: string;
 };
 
 type AuthContextType = {
@@ -14,6 +15,7 @@ type AuthContextType = {
   login: (userData: User, host: string, port: string) => void;
   logout: () => void;
   setHostPort: (host: string, port: string) => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,10 +60,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await AsyncStorage.removeItem('user');
     await AsyncStorage.removeItem('host');
     await AsyncStorage.removeItem('port');
+
+    console.log('Usuario ha cerrado sesión');
   };
 
   return (
-    <AuthContext.Provider value={{ user, host, port, login, logout, setHostPort }}>
+    <AuthContext.Provider value={{ user, host, port, login, logout, setHostPort, setUser }}>
       {children}
     </AuthContext.Provider>
   );

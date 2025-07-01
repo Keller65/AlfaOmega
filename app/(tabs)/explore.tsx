@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView } from 'react-native';
 import Constants from 'expo-constants';
 import ClientIcon from '../../assets/icons/ClientIcon';
+import { useAuth } from '@/context/auth';
 
 interface Customer {
   cardCode: string;
@@ -14,9 +15,11 @@ export default function TabTwoScreen() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const employeeCode = user?.employeeCode;
 
   useEffect(() => {
-    fetch(`http://200.115.188.54:4325/sap/salespersons/4/customers`)
+    fetch(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`)
       .then(res => {
         if (!res.ok) throw new Error('Error al obtener los clientes');
         return res.json();
