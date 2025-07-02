@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../context/auth';
+import { ProductDiscount } from '../../types/types'
 import "../../global.css";
 
 import MinusIcon from '../../assets/icons/MinusIcon';
@@ -52,17 +53,21 @@ export default function Shopping() {
     const fetchDiscounted = async () => {
       try {
         const res = await fetch('http://200.115.188.54:4325/sap/items/discounted', {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user?.token}`,
           },
-          body: JSON.stringify({ token: user?.token }),
         });
-        let data = null;
+        console.log('HTTP status:', res.status);
         const text = await res.text();
-        if (text) {
+        console.log('Raw response text:', text);
+        let data = null;
+        if (res.ok && text) {
           data = JSON.parse(text);
           console.log('Discounted items:', data);
+        } else if (!res.ok) {
+          console.warn('HTTP error fetching discounted items:', res.status, text);
         } else {
           console.warn('La respuesta de productos en descuento estaba vacía');
         }
@@ -197,6 +202,42 @@ export default function Shopping() {
       </BottomSheetModal>
 
       <View className='p-4'>
+        {Object.entries(
+          items.reduce((groups: Record<string, ProductDiscount[]>, item: ProductDiscount) => {
+            const group = item.groupName || 'Otros';
+            if (!groups[group]) groups[group] = [];
+            groups[group].push(item);
+            return groups;
+          }, {} as Record<string, ProductDiscount[]>)
+        ).map(([groupName, groupItems]) => (
+          <View key={groupName} className="mb-6">
+            <Text className="text-xl font-bold mb-2">{groupName}</Text>
+            {(groupItems as ProductDiscount[]).map((item: ProductDiscount, idx: number) => (
+              <TouchableOpacity
+                key={item.itemCode || idx}
+                onPress={() => handleProductPress(item)}
+                activeOpacity={0.7}
+              >
+                <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
+                  <View className='size-[140px] rounded-xl bg-gray-300'></View>
+                  <View className='flex-1 flex justify-center'>
+                    <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
+                    <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
+                    <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
+                    <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      <View className='p-4'>
+        <Text className="text-center font-[Poppins-Medium] text-lg">Explora mas Productos</Text>
+      </View>
+
+      <View className='p-4'>
         {items.map((item, idx) => (
           <TouchableOpacity
             key={item.itemCode || idx}
@@ -206,11 +247,10 @@ export default function Shopping() {
             <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
               <View className='size-[140px] rounded-xl bg-gray-300'></View>
               <View className='flex-1 flex justify-center'>
-                <Text className='font-bold text-lg leading-4'>{item.itemName}</Text>
-                <Text>UPC: {item.itemCode}</Text>
-                <Text>Stock: {item.inStock}</Text>
-                <Text>Committed: {item.committed}</Text>
-                <Text>Precio: L.{item.price}</Text>
+                <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
+                <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
+                <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
+                <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
               </View>
             </View>
           </TouchableOpacity>
