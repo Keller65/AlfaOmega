@@ -24,6 +24,7 @@ export default function Login() {
   }, []);
 
   const { setUser } = useAuth();
+  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBDb2RlIjoiNCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJMT1BFWiBNQVJHSUUiLCJleHAiOjE3NTE0MDY0Nzd9.KKBvyyF4MC8-8Gko7GYlWbYJjNYpcvuy34W3z78NUb8";
 
   const handleLogin = async () => {
     try {
@@ -32,7 +33,8 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeCode: Number(employeeCode),
-          password: password
+          password: password,
+          token: token
         }),
       });
       if (!response.ok) {
@@ -44,6 +46,7 @@ export default function Login() {
         employeeCode: Number(employeeCode),
         fullName: data.fullName,
         password: password,
+        token: token
       };
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData as any);

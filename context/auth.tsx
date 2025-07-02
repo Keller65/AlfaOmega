@@ -6,6 +6,9 @@ type User = {
   name: string;
   email: string;
   employeeCode?: string;
+  fullName?: string;
+  password?: string;
+  token?: string;
 };
 
 type AuthContextType = {

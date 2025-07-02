@@ -23,7 +23,7 @@ export default function ProductDetailScreen() {
         style={{ width: Dimensions.get('window').width }}
         className='w-full absolute bottom-0 p-5'>
         <View>
-          <Text className='font-bold text-sm mb-2 font-[SpaceMono] leading-3'>Cantidad</Text>
+          <Text className='font-bold text-md mb-2 font-[SpaceMono] leading-3'>Cantidad</Text>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <TouchableOpacity
