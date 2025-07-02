@@ -1,7 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView, } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types'
 import "../../global.css";
@@ -15,6 +15,7 @@ export default function Shopping() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [searchText, setSearchText] = useState<string>('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const snapPoints = useMemo(() => ['45%', '70%'], []);
@@ -61,10 +62,9 @@ export default function Shopping() {
         });
         console.log('HTTP status:', res.status);
         const text = await res.text();
-        console.log('Raw response text:', text);
         let data = null;
         if (res.ok && text) {
-          data = JSON.parse(text);
+          data = JSON.stringify(text);
           console.log('Discounted items:', data);
         } else if (!res.ok) {
           console.warn('HTTP error fetching discounted items:', res.status, text);
@@ -96,6 +96,7 @@ export default function Shopping() {
       </View>
     );
   }
+
   const handleProductPress = (item: any) => {
     setSelectedItem(item);
     setQuantity(1);
@@ -123,96 +124,47 @@ export default function Shopping() {
     }
   }
 
+  const filteredItems = items.filter((item: ProductDiscount) => {
+    const text = searchText.toLowerCase();
+    return (
+      item.itemCode?.toLowerCase().includes(text) ||
+      item.itemName?.toLowerCase().includes(text) ||
+      item.groupName?.toLowerCase().includes(text)
+    );
+  });
+
+
   return (
     <ScrollView>
-      <View className='relative w-full h-[180px]'>
-        <View className='absolute inset-0 bg-[#00000077] z-10 flex items-center justify-center'>
-          <Text className='text-white text-3xl font-bold p-4 font-[Poppins-Medium] mt-4 w-[260px] text-center leading-6'>Productos en Descuento</Text>
-        </View>
-        <Image
-          className='w-full aspect-auto object-contain'
-          source={require('../../assets/images/market.jpeg')}
-          style={{ width: Dimensions.get('window').width, height: 180 }}
-        />
-      </View>
-
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        onChange={handleSheetChanges}
-        snapPoints={snapPoints}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            appearsOnIndex={0}
-            disappearsOnIndex={-1}
-            opacity={0.5}
-            pressBehavior="close"
+      <View>
+        <View className='relative w-full h-[180px]'>
+          <View className='absolute inset-0 bg-[#00000077] z-10 flex items-center justify-center'>
+            <Text className='text-white text-3xl font-bold p-4 font-[Poppins-Medium] mt-4 w-[260px] text-center leading-6'>Productos en Descuento</Text>
+          </View>
+          <Image
+            className='w-full aspect-auto object-contain'
+            source={require('../../assets/images/market.jpeg')}
+            style={{ width: Dimensions.get('window').width, height: 180 }}
           />
-        )}
-      >
-        <BottomSheetView
-          style={{
-            flex: 1,
-            minHeight: Dimensions.get('window').height * 0.35,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {selectedItem ? (
-            <View className="w-full px-6">
-              <Text className="text-lg font-semibold mb-2">{selectedItem.itemName}</Text>
-              <Text>UPC: {selectedItem.itemCode}</Text>
-              <Text>Stock: {selectedItem.inStock}</Text>
-              <Text>Committed: {selectedItem.committed}</Text>
-              <Text>Precio: L.{selectedItem.price}</Text>
+        </View>
 
-              {/* Selector de cantidad */}
-              <View className="flex-row items-center mt-4 mb-2">
-                <TouchableOpacity
-                  className="bg-gray-200 rounded-full p-2"
-                  onPress={() => setQuantity((q: number) => Math.max(1, q - 1))}
-                >
-                  <MinusIcon />
-                </TouchableOpacity>
-                <Text className="mx-4 text-lg">{quantity}</Text>
-                <TouchableOpacity
-                  className="bg-gray-200 rounded-full p-2"
-                  onPress={() => setQuantity((q: number) => Math.min(selectedItem.inStock || 99, q + 1))}
-                >
-                  <PlusIcon />
-                </TouchableOpacity>
-              </View>
+        <View className="p-4">
+          <TextInput
+            placeholder="Buscar por UPC o nombre del producto"
+            className="rounded-3xl px-4 py-3 h-[52px] text-base border-2 shadow-sm bg-white border-transparent"
+            value={searchText}
+            onChangeText={setSearchText}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel="Buscar productos"
+          />
+        </View>
 
-              <TouchableOpacity
-                className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
-                onPress={handleAddToCart}
-              >
-                <Text className="text-white font-bold">Agregar al carrito</Text>
-              </TouchableOpacity>
-              <View className="mt-2">
-                <Text className="text-xs text-gray-500">Producto seleccionado:</Text>
-                <Text className="text-sm">{JSON.stringify({ ...selectedItem, quantity }, null, 2)}</Text>
-              </View>
-            </View>
+        <View className='p-4'>
+          {filteredItems.length === 0 ? (
+            <Text className="text-center text-gray-500">No se encontraron productos.</Text>
           ) : (
-            <Text className="text-lg font-semibold">Selecciona un producto</Text>
-          )}
-
-        </BottomSheetView>
-      </BottomSheetModal>
-
-      <View className='p-4'>
-        {Object.entries(
-          items.reduce((groups: Record<string, ProductDiscount[]>, item: ProductDiscount) => {
-            const group = item.groupName || 'Otros';
-            if (!groups[group]) groups[group] = [];
-            groups[group].push(item);
-            return groups;
-          }, {} as Record<string, ProductDiscount[]>)
-        ).map(([groupName, groupItems]) => (
-          <View key={groupName} className="mb-6">
-            <Text className="text-xl font-bold mb-2">{groupName}</Text>
-            {(groupItems as ProductDiscount[]).map((item: ProductDiscount, idx: number) => (
+            filteredItems.map((item, idx) => (
               <TouchableOpacity
                 key={item.itemCode || idx}
                 onPress={() => handleProductPress(item)}
@@ -225,36 +177,212 @@ export default function Shopping() {
                     <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
                     <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
                     <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
+                    {item.tiers && Array.isArray(item.tiers) && item.tiers.length > 0 ? (
+                      <View>
+                        <Text className='font-[Poppins-Regular]'>
+                          Precios por cantidad:
+                        </Text>
+                        {item.tiers.map((tier: { qty: number; price: number; percent: number }, i: number) => (
+                          <Text key={i} className='font-[Poppins-Regular] text-xs'>
+                            {`Desde ${tier.qty}u: L. ${tier.price} (${tier.percent}% desc)`}
+                          </Text>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text className='font-[Poppins-Regular]'>
+                        Precio Descuento: No disponible
+                      </Text>
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </View>
+            ))
+          )}
+        </View>
 
-      <View className='p-4'>
-        <Text className="text-center font-[Poppins-Medium] text-lg">Explora mas Productos</Text>
-      </View>
-
-      <View className='p-4'>
-        {items.map((item, idx) => (
-          <TouchableOpacity
-            key={item.itemCode || idx}
-            onPress={() => handleProductPress(item)}
-            activeOpacity={0.7}
+        <BottomSheetModal
+          ref={bottomSheetModalRef}
+          onChange={handleSheetChanges}
+          snapPoints={snapPoints}
+          backdropComponent={(props) => (
+            <BottomSheetBackdrop
+              {...props}
+              appearsOnIndex={0}
+              disappearsOnIndex={-1}
+              opacity={0.5}
+              pressBehavior="close"
+            />
+          )}
+        >
+          <BottomSheetView
+            style={{
+              flex: 1,
+              minHeight: Dimensions.get('window').height * 0.35,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
-              <View className='size-[140px] rounded-xl bg-gray-300'></View>
-              <View className='flex-1 flex justify-center'>
-                <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
-                <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
-                <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
-                <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
+            {selectedItem ? (
+              <View className="w-full px-4">
+                <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4 flex items-center justify-center'>
+                </View>
+
+                <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
+                <Text>UPC: {selectedItem.itemCode}</Text>
+                <Text>Stock: {selectedItem.inStock}</Text>
+                <Text>Committed: {selectedItem.committed}</Text>
+                <Text>Precio base: L.{selectedItem.price}</Text>
+
+                {/* Precios por cantidad */}
+                {selectedItem.tiers && selectedItem.tiers.length > 0 ? (
+                  <View className="bg-gray-100 p-3 rounded-lg mt-4">
+                    <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
+                    {selectedItem.tiers.map((tier: { qty: number; price: number; percent: number }, index: number) => (
+                      <Text
+                        key={index}
+                        className="text-sm font-[Poppins-Regular] text-gray-700"
+                      >
+                        {`Desde ${tier.qty} unidades: L. ${tier.price} (${tier.percent}% desc)`}
+                      </Text>
+                    ))}
+                  </View>
+                ) : (
+                  <Text className="mt-2 text-sm text-gray-500">Precio Descuento: No disponible</Text>
+                )}
+
+                {/* Selector de cantidad */}
+                <View className="flex-row items-center mt-4 mb-2">
+                  <TouchableOpacity
+                    className="bg-gray-200 rounded-full p-2"
+                    onPress={() => setQuantity((q: number) => Math.max(1, q - 1))}
+                  >
+                    <MinusIcon />
+                  </TouchableOpacity>
+                  <TextInput
+                    value={quantity.toString()}
+                    onChangeText={text => {
+                      const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                      if (!isNaN(num)) {
+                        setQuantity(Math.max(1, num));
+                      } else if (text === '') {
+                        setQuantity(1);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    style={{
+                      width: 48,
+                      textAlign: 'center',
+                      fontSize: 18,
+                      marginHorizontal: 16,
+                      padding: 0,
+                      backgroundColor: 'transparent',
+                      borderWidth: 0,
+                      color: 'black',
+                    }}
+                    underlineColorAndroid="transparent"
+                    maxLength={5}
+                  />
+                  <TouchableOpacity
+                    className="bg-gray-200 rounded-full p-2"
+                    onPress={() => setQuantity((q: number) => q + 1)}
+                  >
+                    <PlusIcon />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
+                  onPress={handleAddToCart}
+                >
+                  <Text className="text-white font-bold">Agregar al carrito</Text>
+                </TouchableOpacity>
+
+                <View className="mt-2">
+                  <View className="mb-2 flex flex-row w-full">
+                    <Text className="text-xs text-gray-500">El Producto seleccionado</Text>
+                    <Text className="text-xs text-gray-500">{selectedItem.hasDiscount !== true ? ' cuenta con descuento' : ' no cuenta con descuento'}</Text>
+                  </View>
+                </View>
               </View>
+            ) : (
+              <Text className="text-lg font-semibold">Selecciona un producto</Text>
+            )}
+          </BottomSheetView>
+
+        </BottomSheetModal>
+
+        <View className='p-4'>
+          {Object.entries(
+            items.reduce((groups: Record<string, ProductDiscount[]>, item: ProductDiscount) => {
+              const group = item.groupName || 'Otros';
+              if (!groups[group]) groups[group] = [];
+              groups[group].push(item);
+              return groups;
+            }, {} as Record<string, ProductDiscount[]>)
+          ).map(([groupName, groupItems]) => (
+            <View key={groupName} className="mb-6">
+              <Text className="text-xl font-bold mb-2">{groupName}</Text>
+              {(groupItems as ProductDiscount[]).map((item: ProductDiscount, idx: number) => (
+                <TouchableOpacity
+                  key={item.itemCode || idx}
+                  onPress={() => handleProductPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
+                    <View className='size-[140px] rounded-xl bg-gray-300'></View>
+                    <View className='flex-1 flex justify-center'>
+                      <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
+                      <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
+                      <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
+                      <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
+
+                      {item.tiers && item.tiers.length > 0 ? (
+                        <View>
+                          <Text className='font-[Poppins-Regular]'>
+                            Precios por cantidad:
+                          </Text>
+                          {item.tiers.map((tier, i) => (
+                            <Text key={i} className='font-[Poppins-Regular] text-xs'>
+                              {`Desde ${tier.qty}u: L. ${tier.price} (${tier.percent}% desc)`}
+                            </Text>
+                          ))}
+                        </View>
+                      ) : (
+                        <Text className='font-[Poppins-Regular]'>
+                          Precio Descuento: No disponible
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
-          </TouchableOpacity>
-        ))}
+          ))}
+        </View>
+
+        <View className='p-4'>
+          <Text className="text-center font-[Poppins-Medium] text-lg">Explora mas Productos</Text>
+        </View>
+
+        <View className='p-4'>
+          {items.map((item, idx) => (
+            <TouchableOpacity
+              key={item.itemCode || idx}
+              onPress={() => handleProductPress(item)}
+              activeOpacity={0.7}
+            >
+              <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
+                <View className='size-[140px] rounded-xl bg-gray-300'></View>
+                <View className='flex-1 flex justify-center'>
+                  <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
+                  <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
+                  <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
+                  <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     </ScrollView>
   );
