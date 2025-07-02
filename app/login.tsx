@@ -10,6 +10,7 @@ export default function Login() {
   const router = useRouter();
   const [employeeCode, setEmployeeCode] = useState("");
   const [password, setPassword] = useState<string>("");
+  const token = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -24,7 +25,6 @@ export default function Login() {
   }, []);
 
   const { setUser } = useAuth();
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbXBDb2RlIjoiNCIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJMT1BFWiBNQVJHSUUiLCJleHAiOjE3NTE0MDY0Nzd9.KKBvyyF4MC8-8Gko7GYlWbYJjNYpcvuy34W3z78NUb8";
 
   const handleLogin = async () => {
     try {
@@ -37,16 +37,17 @@ export default function Login() {
           token: token
         }),
       });
+      console.log('Respuesta del servidor:', response);
       if (!response.ok) {
         Alert.alert('Error', 'Credenciales incorrectas');
         return;
       }
       const data = await response.json();
       const userData = {
-        employeeCode: Number(employeeCode),
+        employeeCode: data.salesPersonCode,
         fullName: data.fullName,
         password: password,
-        token: token
+        token: data.token
       };
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData as any);
