@@ -12,6 +12,7 @@ import HomeIcon from '../../assets/icons/HomeIcon';
 import UsersIcon from '../../assets/icons/UsersIcon';
 import InvoicesIcon from '../../assets/icons/InvoicesIcon';
 import SettingsIcon from '../../assets/icons/SettingsIcon';
+import CartIcon from '../../assets/icons/CartIcon';
 
 export default function Layout() {
   const colorScheme = useColorScheme();
@@ -22,11 +23,8 @@ export default function Layout() {
           // tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
           tabBarActiveTintColor: "#09f", // Blue-800
           headerShown: false,
-          tabBarButton: HapticTab,
-          tabBarBackground: TabBarBackground,
           tabBarStyle: Platform.select({
             ios: {
-              // Use a transparent background on iOS to show the blur effect
               position: 'absolute',
             },
             default: {},
@@ -52,6 +50,14 @@ export default function Layout() {
           options={{
             title: 'Facturas',
             tabBarIcon: ({ color }) => <InvoicesIcon size={26} color={color} />,
+          }}
+        />
+
+        <Tabs.Screen
+          name="shopping"
+          options={{
+            title: 'Carrito',
+            tabBarIcon: ({ color }) => <CartIcon size={26} color={color} />,
           }}
         />
 
