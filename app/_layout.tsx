@@ -1,13 +1,18 @@
-import { useFonts } from 'expo-font';
-import { Slot } from "expo-router";
+import { Slot, Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from "react";
-import { AuthProvider } from "../context/auth";
+import { useFonts } from 'expo-font';
+import { AuthProvider } from '../context/auth';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { Image } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
+  const [appReady, setAppReady] = useState(false);
+
+  const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
     'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins-SemiBold.ttf'),
@@ -22,18 +27,34 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().then(() => setAppReady(true));
     }
-  }, [loaded, error]);
+  }, [fontsLoaded, fontError]);
 
-  if (!loaded && !error) {
-    return null;
-  }
+  if (!appReady) return null;
 
   return (
-    <AuthProvider >
-      <Slot />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <BottomSheetModalProvider>
+            <Stack
+            screenOptions={{
+              headerShown: true,
+              headerTitleAlign: 'center',
+              headerTitle: 'Nuevo Pedido',
+              headerStyle: { backgroundColor: '#fff' },
+              headerShadowVisible: false,
+              headerTitleStyle: {
+              fontFamily: 'Poppins-SemiBold',
+              fontSize: 18,
+              },
+            }}
+            >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+        </BottomSheetModalProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

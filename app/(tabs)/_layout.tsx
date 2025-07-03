@@ -49,7 +49,7 @@ export default function Layout() {
             <Tabs.Screen
               name="explore"
               options={{
-                title: 'Clientes',
+                title: 'Pedidos',
                 tabBarIcon: ({ color }) => <UsersIcon size={26} color={color} />,
               }}
             />

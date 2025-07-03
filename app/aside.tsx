@@ -1,0 +1,84 @@
+import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import Constants from 'expo-constants';
+import ClientIcon from '../assets/icons/ClientIcon';
+import { useAuth } from '@/context/auth';
+import { useRouter } from 'expo-router';
+
+interface Customer {
+  cardCode: string;
+  cardName: string;
+  federalTaxID: string;
+}
+
+export default function PedidosScreen() {
+  const slpCode = 1;
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const employeeCode = user?.employeeCode;
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`)
+      .then(res => {
+        if (!res.ok) throw new Error('Error al obtener los clientes');
+        return res.json();
+      })
+      .then(data => setCustomers(data))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [employeeCode]);
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ paddingHorizontal: 10, paddingTop: Constants.statusBarHeight / 2 }}>
+        {loading && <ActivityIndicator size="large" color="#0000ff" />}
+
+        {error && <Text style={{ color: 'red' }}>{error}</Text>}
+
+        <View style={{ gap: 24 }}>
+          {customers.map(customer => (
+            <TouchableOpacity
+              key={customer.cardCode}
+              onPress={async () => {
+                try {
+                  await router.push({
+                    pathname: '/pedido/[cardCode]',
+                    params: {
+                      cardCode: customer.cardCode,
+                      cardName: customer.cardName,
+                      federalTaxID: customer.federalTaxID
+                    }
+                  });
+                } catch (err) {
+                  console.error('Error al navegar:', err);
+                }
+              }}
+              
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+            >
+              <View style={{ backgroundColor: '#f7df09', width: 50, height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 80 }}>
+                <ClientIcon size={24} color="#000" />
+              </View>
+
+              <View style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
+                <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 18, letterSpacing: -0.6, lineHeight: 20 }}>{customer.cardName}</Text>
+
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Text style={{ fontFamily: 'Poppins-SemiBold', lineHeight: 20, color: '#6b6b6b' }}>
+                    Código: <Text style={{ fontFamily: 'Poppins-Regular' }}>{customer.cardCode}</Text>
+                  </Text>
+                  <Text style={{ fontFamily: 'Poppins-SemiBold', lineHeight: 20, color: '#6b6b6b' }}>
+                    RTN: <Text style={{ fontFamily: 'Poppins-Regular' }}>{customer.federalTaxID}</Text>
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}

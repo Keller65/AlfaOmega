@@ -1,11 +1,13 @@
 import Constants from 'expo-constants';
-import { Text, View } from 'react-native';
+import { Text, View, Button } from 'react-native';
 import "../../global.css";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -18,7 +20,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>
+    <View className='bg-white flex-1' style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>
       <Text>Bienvenido al sistema de gestión de inventario</Text>
       {user && (
         <View style={{ marginTop: 16 }}>
