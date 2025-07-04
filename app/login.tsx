@@ -1,17 +1,16 @@
 import axios from 'axios';
 import * as Location from 'expo-location';
-import { Redirect, useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../context/auth";
 
 export default function Login() {
   const { user } = useAuth();
-  const router = useRouter();
   const [employeeCode, setEmployeeCode] = useState("");
   const [password, setPassword] = useState<string>("");
-  const token = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -28,14 +27,20 @@ export default function Login() {
   const { setUser } = useAuth();
 
   const handleLogin = async () => {
+    if (loading) return;
+    setLoading(true);
+
     try {
+      const deviceToken = "";
+
       const response = await axios.post('http://200.115.188.54:4325/auth/employee', {
         employeeCode: Number(employeeCode),
         password: password,
-        token: token
+        token: deviceToken
       }, {
         headers: { 'Content-Type': 'application/json' }
       });
+
       const data = response.data;
       const userData = {
         employeeCode: data.salesPersonCode,
@@ -43,15 +48,27 @@ export default function Login() {
         password: password,
         token: data.token
       };
+
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData as any);
       console.log('Datos del usuario:', userData);
     } catch (error: any) {
-      if (error.response && error.response.status === 401) {
-        Alert.alert('Error', 'Credenciales incorrectas');
+      if (error.response) {
+        if (error.response.status === 401) {
+          Alert.alert('Error', 'Credenciales incorrectas. Por favor, verifica tu código de empleado y contraseña.');
+        } else if (error.response.status >= 500) {
+          Alert.alert('Error', 'Error del servidor. Por favor, inténtalo de nuevo más tarde.');
+        } else {
+          Alert.alert('Error', `Algo salió mal: ${error.response.status}.`);
+        }
+      } else if (error.request) {
+        Alert.alert('Error', 'No se pudo conectar al servidor. Por favor, verifica tu conexión a internet.');
       } else {
-        Alert.alert('Error', 'No se pudo conectar al servidor');
+        Alert.alert('Error', 'Ocurrió un error inesperado al iniciar sesión.');
       }
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +90,7 @@ export default function Login() {
             value={employeeCode}
             onChangeText={setEmployeeCode}
             keyboardType="numeric"
+            editable={!loading}
           />
         </View>
 
@@ -84,6 +102,7 @@ export default function Login() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            editable={!loading}
           />
         </View>
       </View>
@@ -91,19 +110,23 @@ export default function Login() {
       <TouchableOpacity
         className="mt-4 bg-blue-500 p-4 h-14 rounded-xl flex items-center justify-center"
         onPress={handleLogin}
+        disabled={loading}
       >
-        <Text className="text-white text-center font-[Poppins-Bold] leading-3">Iniciar Sesión</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" /> // Show spinner
+        ) : (
+          <Text className="text-white text-center font-[Poppins-Bold] leading-3">Iniciar Sesión</Text> // Show text
+        )}
       </TouchableOpacity>
-
-      <View className='w-full flex items-center' style={{ marginTop: 100 }}>
-        <TouchableOpacity>
-          <Text style={{ color: '#09f' }} className="text-center font-[Poppins-Regular]">Configuracion</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "white"
+  },
 });
