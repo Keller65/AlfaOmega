@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
+import axios from 'axios';
 
 interface Customer {
   cardCode: string;
@@ -12,7 +13,6 @@ interface Customer {
 }
 
 export default function PedidosScreen() {
-  const slpCode = 1;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,19 +21,18 @@ export default function PedidosScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`, {
-      method: 'GET',
+    if (!employeeCode || !user?.token) return;
+    setLoading(true);
+    setError(null);
+
+    axios.get(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${user?.token}`,
+        'Authorization': `Bearer ${user.token}`,
       },
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Error al obtener los clientes');
-        return res.json();
-      })
-      .then(data => setCustomers(data))
-      .catch(err => setError(err.message))
+      .then(res => setCustomers(res.data))
+      .catch(err => setError(err.response?.data?.message || err.message))
       .finally(() => setLoading(false));
   }, [employeeCode, user?.token]);
 
@@ -62,7 +61,6 @@ export default function PedidosScreen() {
                   console.error('Error al navegar:', err);
                 }
               }}
-
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
             >
               <View style={{ backgroundColor: '#f7df09', width: 50, height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 80 }}>

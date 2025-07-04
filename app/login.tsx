@@ -1,7 +1,8 @@
+import axios from 'axios';
 import * as Location from 'expo-location';
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, Button } from "react-native";
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "../context/auth";
 
@@ -28,21 +29,14 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const response = await fetch('http://200.115.188.54:4325/auth/employee', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          employeeCode: Number(employeeCode),
-          password: password,
-          token: token
-        }),
+      const response = await axios.post('http://200.115.188.54:4325/auth/employee', {
+        employeeCode: Number(employeeCode),
+        password: password,
+        token: token
+      }, {
+        headers: { 'Content-Type': 'application/json' }
       });
-      console.log('Respuesta del servidor:', response);
-      if (!response.ok) {
-        Alert.alert('Error', 'Credenciales incorrectas');
-        return;
-      }
-      const data = await response.json();
+      const data = response.data;
       const userData = {
         employeeCode: data.salesPersonCode,
         fullName: data.fullName,
@@ -52,8 +46,12 @@ export default function Login() {
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData as any);
       console.log('Datos del usuario:', userData);
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo conectar al servidor');
+    } catch (error: any) {
+      if (error.response && error.response.status === 401) {
+        Alert.alert('Error', 'Credenciales incorrectas');
+      } else {
+        Alert.alert('Error', 'No se pudo conectar al servidor');
+      }
     }
   };
 
@@ -101,7 +99,6 @@ export default function Login() {
         <TouchableOpacity>
           <Text style={{ color: '#09f' }} className="text-center font-[Poppins-Regular]">Configuracion</Text>
         </TouchableOpacity>
-
       </View>
     </View>
   );

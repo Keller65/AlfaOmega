@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
+import axios from 'axios';
 import "../../global.css";
 
 import MinusIcon from '../../assets/icons/MinusIcon';
@@ -31,24 +32,18 @@ export default function Product() {
       if (!user?.token) return;
 
       try {
+        const headers = {
+          Authorization: `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        };
+
         const [resGeneral, resDescuento] = await Promise.all([
-          fetch('http://200.115.188.54:4325/sap/Items/Active', {
-            headers: {
-              'Authorization': `Bearer ${user.token}`,
-              'Content-Type': 'application/json',
-            },
-          }),
-          fetch('http://200.115.188.54:4325/sap/items/discounted', {
-            headers: {
-              'Authorization': `Bearer ${user.token}`,
-              'Content-Type': 'application/json',
-            },
-          }),
+          axios.get('http://200.115.188.54:4325/sap/Items/Active', { headers }),
+          axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers }),
         ]);
 
-        const dataGeneral = await resGeneral.json();
-        const textDescuento = await resDescuento.text();
-        const dataDescuento = textDescuento ? JSON.parse(textDescuento) : [];
+        const dataGeneral = resGeneral.data;
+        const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
 
         const descuentoMap = new Map<string, any>();
         for (const item of dataDescuento) {
@@ -73,7 +68,7 @@ export default function Product() {
         setItems(productosCombinados);
         setLoading(false);
       } catch (error) {
-        console.error('Error al cargar productos:', error);
+        console.error('Error al cargar productos con axios:', error);
         setItems([]);
         setLoading(false);
       }
