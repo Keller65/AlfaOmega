@@ -38,7 +38,7 @@ export default function PedidosScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <View style={{ paddingHorizontal: 10, paddingTop: Constants.statusBarHeight / 2 }}>
+      <View style={{ paddingHorizontal: 10 }}>
         {loading && <ActivityIndicator size="large" color="#0000ff" />}
 
         {error && <Text style={{ color: 'red' }}>{error}</Text>}

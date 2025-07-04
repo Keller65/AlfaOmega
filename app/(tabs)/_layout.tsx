@@ -2,10 +2,6 @@ import { Tabs } from 'expo-router';
 import ProtectedLayout from '../ProtectedLayout';
 import React from 'react';
 import { Platform } from 'react-native';
-
-import { HapticTab } from '@/components/HapticTab';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 import HomeIcon from '../../assets/icons/HomeIcon';

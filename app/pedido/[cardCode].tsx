@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-import ProductComponent from '@/components/productos/Productos';
+import TopTabNavigatorLayout from '../(top-tabs)/_layout';
 
 const PedidoScreen: React.FC = () => {
   const route = useRoute();
@@ -11,17 +11,10 @@ const PedidoScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <ProductComponent />
+    <View className='flex-1 bg-white'>
+      <TopTabNavigatorLayout />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-  label: { fontSize: 16, marginBottom: 8 },
-  code: { fontFamily: 'monospace', fontSize: 14, backgroundColor: '#eee', padding: 8 },
-});
 
 export default PedidoScreen;

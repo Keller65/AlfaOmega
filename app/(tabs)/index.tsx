@@ -1,9 +1,9 @@
 import Constants from 'expo-constants';
 import { Text, View, Button } from 'react-native';
-import "../../global.css";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import "../../global.css";
 
 export default function HomeScreen() {
   const [user, setUser] = useState<any>(null);
