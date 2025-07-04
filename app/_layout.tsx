@@ -38,7 +38,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <BottomSheetModalProvider>
-            <Stack
+          <Stack
             screenOptions={{
               headerShown: true,
               headerTitleAlign: 'center',
@@ -46,13 +46,13 @@ export default function RootLayout() {
               headerStyle: { backgroundColor: '#fff' },
               headerShadowVisible: false,
               headerTitleStyle: {
-              fontFamily: 'Poppins-SemiBold',
-              fontSize: 18,
+                fontFamily: 'Poppins-SemiBold',
+                fontSize: 18,
               },
             }}
-            >
+          >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            </Stack>
+          </Stack>
         </BottomSheetModalProvider>
       </AuthProvider>
     </GestureHandlerRootView>

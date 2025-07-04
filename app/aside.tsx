@@ -21,7 +21,13 @@ export default function PedidosScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`)
+    fetch(`http://200.115.188.54:4325/sap/salespersons/${employeeCode}/customers`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user?.token}`,
+      },
+    })
       .then(res => {
         if (!res.ok) throw new Error('Error al obtener los clientes');
         return res.json();
@@ -29,7 +35,7 @@ export default function PedidosScreen() {
       .then(data => setCustomers(data))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, [employeeCode]);
+  }, [employeeCode, user?.token]);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -56,7 +62,7 @@ export default function PedidosScreen() {
                   console.error('Error al navegar:', err);
                 }
               }}
-              
+
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
             >
               <View style={{ backgroundColor: '#f7df09', width: 50, height: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 80 }}>

@@ -1,9 +1,9 @@
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView, } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { useAuth } from '../../context/auth';
-import { ProductDiscount } from '../../types/types'
+import { ProductDiscount } from '../../types/types';
 import "../../global.css";
 
 import MinusIcon from '../../assets/icons/MinusIcon';
@@ -11,72 +11,140 @@ import PlusIcon from '../../assets/icons/PlusIcon';
 
 export default function Product() {
   const { user } = useAuth();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ProductDiscount | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
+  const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [total, setTotal] = useState<number>(0);
   const [searchText, setSearchText] = useState<string>('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-  const snapPoints = useMemo(() => ['45%', '70%'], []);
+  const snapPoints = useMemo(() => ['69%', '76%'], []);
 
   const handleSheetChanges = useCallback((index: number) => {
-    if (index === -1) setSelectedItem(null); // Limpiar al cerrar
-  }, []);
-
-  function FetchProducts() {
-    fetch('http://200.115.188.54:4325/sap/Items/Active')
-      .then(res => res.json())
-      .then(data => {
-        setItems(data);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setLoading(false);
-        console.error('Error fetching items', e);
-      });
-  }
-
-  useEffect(() => {
-    fetch('http://200.115.188.54:4325/sap/Items/Active')
-      .then(res => res.json())
-      .then(data => {
-        setItems(data);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setLoading(false);
-        console.error('Error fetching items', e);
-      });
+    if (index === -1) setSelectedItem(null);
   }, []);
 
   useEffect(() => {
-    const fetchDiscounted = async () => {
+    const fetchAllProducts = async () => {
+      if (!user?.token) return;
+
       try {
-        const res = await fetch('http://200.115.188.54:4325/sap/items/discounted', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token}`,
-          },
-        });
-        console.log('HTTP status:', res.status);
-        const text = await res.text();
-        let data = null;
-        if (res.ok && text) {
-          data = JSON.stringify(text);
-          console.log('Discounted items:', data);
-        } else if (!res.ok) {
-          console.warn('HTTP error fetching discounted items:', res.status, text);
-        } else {
-          console.warn('La respuesta de productos en descuento estaba vacía');
+        const [resGeneral, resDescuento] = await Promise.all([
+          fetch('http://200.115.188.54:4325/sap/Items/Active', {
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+              'Content-Type': 'application/json',
+            },
+          }),
+          fetch('http://200.115.188.54:4325/sap/items/discounted', {
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+              'Content-Type': 'application/json',
+            },
+          }),
+        ]);
+
+        const dataGeneral = await resGeneral.json();
+        const textDescuento = await resDescuento.text();
+        const dataDescuento = textDescuento ? JSON.parse(textDescuento) : [];
+
+        const descuentoMap = new Map<string, any>();
+        for (const item of dataDescuento) {
+          descuentoMap.set(item.itemCode, item);
         }
-      } catch (e) {
-        console.error('Error fetching discounted items', e);
+
+        const productosCombinados = dataGeneral.map((producto: any) => {
+          if (descuentoMap.has(producto.itemCode)) {
+            const descuento = descuentoMap.get(producto.itemCode);
+            return {
+              ...producto,
+              tiers: descuento.tiers,
+              hasDiscount: true,
+            };
+          }
+          return {
+            ...producto,
+            hasDiscount: false,
+          };
+        });
+
+        setItems(productosCombinados);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error al cargar productos:', error);
+        setItems([]);
+        setLoading(false);
       }
     };
-    if (user?.token) fetchDiscounted();
+
+    fetchAllProducts();
   }, [user?.token]);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      setUnitPrice(0);
+      setTotal(0);
+      return;
+    }
+
+    let newUnitPrice = selectedItem.price;
+    if (selectedItem.tiers && selectedItem.tiers.length > 0) {
+      const applicableTier = selectedItem.tiers
+        .filter((tier: any) => quantity >= tier.qty)
+        .sort((a: any, b: any) => b.qty - a.qty)[0];
+      if (applicableTier) {
+        newUnitPrice = applicableTier.price;
+      }
+    }
+    setUnitPrice(newUnitPrice);
+    setTotal(newUnitPrice * quantity);
+  }, [selectedItem, quantity]);
+
+  const handleProductPress = (item: ProductDiscount) => {
+    setSelectedItem(item);
+    setQuantity(1);
+    bottomSheetModalRef.current?.present();
+  };
+
+  const handleAddToCart = async () => {
+    try {
+      if (!selectedItem) return;
+
+      const existing = await AsyncStorage.getItem('products');
+      let products = existing ? JSON.parse(existing) : [];
+
+      if (!products.some((p: any) => p.itemCode === selectedItem.itemCode)) {
+        products.push({ ...selectedItem, quantity, unitPrice, total });
+        await AsyncStorage.setItem('products', JSON.stringify(products));
+        console.log('Producto agregado al carrito:', selectedItem);
+      } else {
+        console.log('El producto ya está en el carrito:', selectedItem);
+      }
+    } catch (e) {
+      console.error('Error al guardar en AsyncStorage', e);
+    }
+  };
+
+  const filteredItems = Array.isArray(items)
+    ? items.filter((item) => {
+      const text = searchText.toLowerCase();
+      return (
+        item.itemCode?.toLowerCase().includes(text) ||
+        item.itemName?.toLowerCase().includes(text) ||
+        item.groupName?.toLowerCase().includes(text)
+      );
+    })
+    : [];
+
+  if (!user?.token) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text>No has iniciado sesión. Ingresa para ver los productos.</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -86,68 +154,23 @@ export default function Product() {
     );
   }
 
-  if (!items || items.length === 0) {
-    return (
-      <View className='flex-1 items-center justify-center gap-6'>
-        <Text>No se pudo cargar el producto.</Text>
-        <TouchableOpacity onPress={FetchProducts}>
-          <Text className='text-blue-400'>Reintentar</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const handleProductPress = (item: any) => {
-    setSelectedItem(item);
-    setQuantity(1);
-    bottomSheetModalRef.current?.present();
-  };
-
-  const handleAddToCart = async () => {
-    try {
-      const existing = await AsyncStorage.getItem('products');
-      let products = [];
-      if (existing) {
-        products = JSON.parse(existing);
-      }
-      // Evita duplicados por itemCode
-      if (!products.some((p: any) => p.itemCode === selectedItem.itemCode)) {
-        products.push(selectedItem);
-        await AsyncStorage.setItem('products', JSON.stringify(products));
-        console.log('Producto agregado al carrito:', selectedItem);
-        console.log('Productos actuales en carrito:', products);
-      } else {
-        console.log('El producto ya está en el carrito:', selectedItem);
-      }
-    } catch (e) {
-      console.error('Error al guardar en AsyncStorage', e);
-    }
-  }
-
-  const filteredItems = items.filter((item: ProductDiscount) => {
-    const text = searchText.toLowerCase();
-    return (
-      item.itemCode?.toLowerCase().includes(text) ||
-      item.itemName?.toLowerCase().includes(text) ||
-      item.groupName?.toLowerCase().includes(text)
-    );
-  });
-
-
   return (
     <ScrollView>
       <View>
+        {/* Banner */}
         <View className='relative w-full h-[180px]'>
           <View className='absolute inset-0 bg-[#00000077] z-10 flex items-center justify-center'>
-            <Text className='text-white text-3xl font-bold p-4 font-[Poppins-Medium] mt-4 w-[260px] text-center leading-6'>Productos en Descuento</Text>
+            <Text className='text-white text-3xl font-bold p-4 font-[Poppins-Medium] mt-4 w-[260px] text-center leading-6'>
+              Productos en Descuento
+            </Text>
           </View>
           <Image
-            className='w-full aspect-auto object-contain'
             source={require('../../assets/images/market.jpeg')}
             style={{ width: Dimensions.get('window').width, height: 180 }}
           />
         </View>
 
+        {/* Buscador */}
         <View className="p-4">
           <TextInput
             placeholder="Buscar por UPC o nombre del producto"
@@ -160,6 +183,7 @@ export default function Product() {
           />
         </View>
 
+        {/* Lista de productos filtrados */}
         <View className='p-4'>
           {filteredItems.length === 0 ? (
             <Text className="text-center text-gray-500">No se encontraron productos.</Text>
@@ -170,28 +194,24 @@ export default function Product() {
                 onPress={() => handleProductPress(item)}
                 activeOpacity={0.7}
               >
-                <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
-                  <View className='size-[140px] rounded-xl bg-gray-300'></View>
-                  <View className='flex-1 flex justify-center'>
+                <View className='flex-row gap-3 mb-4'>
+                  <View className='size-[140px] rounded-xl bg-gray-300' />
+                  <View className='flex-1 justify-center'>
                     <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
                     <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
                     <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
-                    <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
-                    {item.tiers && Array.isArray(item.tiers) && item.tiers.length > 0 ? (
+                    <Text className='font-[Poppins-Regular]'>Precio: L.{item.price.toFixed(2)}</Text>
+                    {item.tiers?.length > 0 ? (
                       <View>
-                        <Text className='font-[Poppins-Regular]'>
-                          Precios por cantidad:
-                        </Text>
-                        {item.tiers.map((tier: { qty: number; price: number; percent: number }, i: number) => (
+                        <Text className='font-[Poppins-Regular]'>Precios por cantidad:</Text>
+                        {item.tiers.map((tier, i) => (
                           <Text key={i} className='font-[Poppins-Regular] text-xs'>
-                            {`Desde ${tier.qty}u: L. ${tier.price} (${tier.percent}% desc)`}
+                            {`Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
                           </Text>
                         ))}
                       </View>
                     ) : (
-                      <Text className='font-[Poppins-Regular]'>
-                        Precio Descuento: No disponible
-                      </Text>
+                      <Text className='font-[Poppins-Regular]'>Precio Descuento: No disponible</Text>
                     )}
                   </View>
                 </View>
@@ -200,6 +220,7 @@ export default function Product() {
           )}
         </View>
 
+        {/* MODAL */}
         <BottomSheetModal
           ref={bottomSheetModalRef}
           onChange={handleSheetChanges}
@@ -217,172 +238,91 @@ export default function Product() {
           <BottomSheetView
             style={{
               flex: 1,
-              minHeight: Dimensions.get('window').height * 0.35,
+              minHeight: Dimensions.get('window').height * 0.67,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             {selectedItem ? (
-              <View className="w-full px-4">
-                <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4 flex items-center justify-center'>
+              <View className="w-full px-4 gap-y-8">
+                <View>
+                  <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4' />
+                  <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
+                  <Text>UPC: {selectedItem.itemCode}</Text>
+                  <Text>Stock: {selectedItem.inStock}</Text>
+                  <Text>Committed: {selectedItem.committed}</Text>
+                  <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+
+                  {/* Precios por cantidad */}
+                  {(selectedItem.tiers && selectedItem.tiers.length > 0) && (
+                    <View className="bg-gray-100 p-3 rounded-lg mt-4">
+                      <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
+                      {selectedItem.tiers.map((tier, index) => (
+                        <Text key={index} className="text-sm text-gray-700">
+                          {`Desde ${tier.qty} unidades: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
-                <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
-                <Text>UPC: {selectedItem.itemCode}</Text>
-                <Text>Stock: {selectedItem.inStock}</Text>
-                <Text>Committed: {selectedItem.committed}</Text>
-                <Text>Precio base: L.{selectedItem.price}</Text>
-
-                {/* Precios por cantidad */}
-                {selectedItem.tiers && selectedItem.tiers.length > 0 ? (
-                  <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                    <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
-                    {selectedItem.tiers.map((tier: { qty: number; price: number; percent: number }, index: number) => (
-                      <Text
-                        key={index}
-                        className="text-sm font-[Poppins-Regular] text-gray-700"
+                <View>
+                  <View className='flex-row items-center justify-between w-full'>
+                    {/* Selector de cantidad */}
+                    <View className="flex-row items-center mt-4 mb-2">
+                      <TouchableOpacity
+                        className="bg-gray-200 rounded-full p-2"
+                        onPress={() => setQuantity((q) => Math.max(1, q - 1))}
                       >
-                        {`Desde ${tier.qty} unidades: L. ${tier.price} (${tier.percent}% desc)`}
-                      </Text>
-                    ))}
+                        <MinusIcon size={20} />
+                      </TouchableOpacity>
+                      <TextInput
+                        value={quantity.toString()}
+                        onChangeText={(text) => {
+                          const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                          setQuantity(!isNaN(num) ? Math.max(1, num) : 1);
+                        }}
+                        keyboardType="numeric"
+                        style={{
+                          width: 48,
+                          textAlign: 'center',
+                          fontSize: 18,
+                          marginHorizontal: 16,
+                          color: 'black',
+                        }}
+                        maxLength={5}
+                      />
+                      <TouchableOpacity
+                        className="bg-gray-200 rounded-full p-2"
+                        onPress={() => setQuantity((q) => q + 1)}
+                      >
+                        <PlusIcon size={20} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Precio unitario aplicado y total */}
+                    <View className="mt-2 mb-2 w-[126px]">
+                      <Text className="text-base text-gray-500 font-[Poppins-Regular] leading-4">Total</Text>
+                      <Text className="text-2xl font-[Poppins-Bold] leading-6">{total.toFixed(2)}</Text>
+                    </View>
                   </View>
-                ) : (
-                  <Text className="mt-2 text-sm text-gray-500">Precio Descuento: No disponible</Text>
-                )}
 
-                {/* Selector de cantidad */}
-                <View className="flex-row items-center mt-4 mb-2">
+                  {/* Botón Agregar */}
                   <TouchableOpacity
-                    className="bg-gray-200 rounded-full p-2"
-                    onPress={() => setQuantity((q: number) => Math.max(1, q - 1))}
+                    className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
+                    onPress={handleAddToCart}
                   >
-                    <MinusIcon />
+                    <Text className="text-white font-bold">Agregar al carrito</Text>
                   </TouchableOpacity>
-                  <TextInput
-                    value={quantity.toString()}
-                    onChangeText={text => {
-                      const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                      if (!isNaN(num)) {
-                        setQuantity(Math.max(1, num));
-                      } else if (text === '') {
-                        setQuantity(1);
-                      }
-                    }}
-                    keyboardType="numeric"
-                    style={{
-                      width: 48,
-                      textAlign: 'center',
-                      fontSize: 18,
-                      marginHorizontal: 16,
-                      padding: 0,
-                      backgroundColor: 'transparent',
-                      borderWidth: 0,
-                      color: 'black',
-                    }}
-                    underlineColorAndroid="transparent"
-                    maxLength={5}
-                  />
-                  <TouchableOpacity
-                    className="bg-gray-200 rounded-full p-2"
-                    onPress={() => setQuantity((q: number) => q + 1)}
-                  >
-                    <PlusIcon />
-                  </TouchableOpacity>
-                </View>
 
-                <TouchableOpacity
-                  className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
-                  onPress={handleAddToCart}
-                >
-                  <Text className="text-white font-bold">Agregar al carrito</Text>
-                </TouchableOpacity>
-
-                <View className="mt-2">
-                  <View className="mb-2 flex flex-row w-full">
-                    <Text className="text-xs text-gray-500">El Producto seleccionado</Text>
-                    <Text className="text-xs text-gray-500">{selectedItem.hasDiscount !== true ? ' cuenta con descuento' : ' no cuenta con descuento'}</Text>
-                  </View>
+                  {unitPrice && <Text className="text-sm text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
                 </View>
               </View>
             ) : (
               <Text className="text-lg font-semibold">Selecciona un producto</Text>
             )}
           </BottomSheetView>
-
         </BottomSheetModal>
-
-        <View className='p-4'>
-          {Object.entries(
-            items.reduce((groups: Record<string, ProductDiscount[]>, item: ProductDiscount) => {
-              const group = item.groupName || 'Otros';
-              if (!groups[group]) groups[group] = [];
-              groups[group].push(item);
-              return groups;
-            }, {} as Record<string, ProductDiscount[]>)
-          ).map(([groupName, groupItems]) => (
-            <View key={groupName} className="mb-6">
-              <Text className="text-xl font-bold mb-2">{groupName}</Text>
-              {(groupItems as ProductDiscount[]).map((item: ProductDiscount, idx: number) => (
-                <TouchableOpacity
-                  key={item.itemCode || idx}
-                  onPress={() => handleProductPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
-                    <View className='size-[140px] rounded-xl bg-gray-300'></View>
-                    <View className='flex-1 flex justify-center'>
-                      <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
-                      <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
-                      <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
-                      <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
-
-                      {item.tiers && item.tiers.length > 0 ? (
-                        <View>
-                          <Text className='font-[Poppins-Regular]'>
-                            Precios por cantidad:
-                          </Text>
-                          {item.tiers.map((tier, i) => (
-                            <Text key={i} className='font-[Poppins-Regular] text-xs'>
-                              {`Desde ${tier.qty}u: L. ${tier.price} (${tier.percent}% desc)`}
-                            </Text>
-                          ))}
-                        </View>
-                      ) : (
-                        <Text className='font-[Poppins-Regular]'>
-                          Precio Descuento: No disponible
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-        </View>
-
-        <View className='p-4'>
-          <Text className="text-center font-[Poppins-Medium] text-lg">Explora mas Productos</Text>
-        </View>
-
-        <View className='p-4'>
-          {items.map((item, idx) => (
-            <TouchableOpacity
-              key={item.itemCode || idx}
-              onPress={() => handleProductPress(item)}
-              activeOpacity={0.7}
-            >
-              <View className='flex-row gap-3' style={{ marginBottom: 16 }}>
-                <View className='size-[140px] rounded-xl bg-gray-300'></View>
-                <View className='flex-1 flex justify-center'>
-                  <Text className='font-[Poppins-SemiBold] text-lg leading-4'>{item.itemName}</Text>
-                  <Text className='font-[Poppins-Medium]'>UPC: {item.itemCode}</Text>
-                  <Text className='font-[Poppins-Regular]'>Stock: {item.inStock}</Text>
-                  <Text className='font-[Poppins-Regular]'>Precio: L.{item.price}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
     </ScrollView>
   );
