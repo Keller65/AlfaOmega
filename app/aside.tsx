@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import Constants from 'expo-constants';
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
@@ -59,6 +59,7 @@ export default function PedidosScreen() {
                   });
                 } catch (err) {
                   console.error('Error al navegar:', err);
+                  Alert.alert('Error de navegación', 'No se pudo abrir la pantalla de pedido.');
                 }
               }}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
