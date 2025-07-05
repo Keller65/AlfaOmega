@@ -22,7 +22,7 @@ interface ProductCategory {
 }
 
 export default function TopTabNavigatorLayout() {
-  const { user } = useAuth(); // Necesitamos el token del usuario
+  const { user } = useAuth();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,20 +121,20 @@ export default function TopTabNavigatorLayout() {
       <Tab.Navigator
         initialRouteName={categories[0]?.slug || 'carrito'}
         screenOptions={{
-          tabBarActiveTintColor: '#007bff',
+          tabBarActiveTintColor: '#09f',
           tabBarInactiveTintColor: 'gray',
           tabBarIndicatorStyle: {
-            backgroundColor: '#007bff',
+            backgroundColor: '#09f',
             height: 3,
           },
           tabBarStyle: {
             backgroundColor: 'white',
           },
           tabBarLabelStyle: {
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: 'bold',
           },
-          tabBarPressColor: 'rgba(0, 123, 255, 0.1)',
+          tabBarPressColor: '#09f',
           tabBarScrollEnabled: true,
         }}
       >
@@ -144,7 +144,7 @@ export default function TopTabNavigatorLayout() {
             name={category.slug}
             component={CategoryProductScreen}
             options={{
-              title: category.groupName,
+              title: category.groupName.charAt(0).toUpperCase() + category.groupName.slice(1).toLowerCase(),
             }}
             initialParams={{ groupName: category.groupName, groupCode: category.groupCode.toString() }}
           />

@@ -7,6 +7,7 @@ import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import "../../global.css";
+import { useCartStore } from '@/state/index'; // Import the Zustand store
 
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
@@ -15,6 +16,11 @@ const CategoryProductScreen = memo(() => {
   const { user } = useAuth();
   const route = useRoute();
   const { groupName, groupCode } = route.params as { groupName?: string; groupCode?: string };
+
+  // --- CORRECTED: Use the correct function names from the Zustand store ---
+  const addProduct = useCartStore(state => state.addProduct);
+  const updateQuantity = useCartStore(state => state.updateQuantity); // Changed from updateProductQuantity to updateQuantity
+  const productsInCart = useCartStore(state => state.products);
 
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,57 +136,53 @@ const CategoryProductScreen = memo(() => {
 
   const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
-    setQuantity(1);
+    setQuantity(1); // Reset quantity when a new product is selected
     bottomSheetModalRef.current?.present();
   }, []);
 
-  const handleAddToCart = useCallback(async () => {
-    try {
-      if (!selectedItem) {
-        Alert.alert('Error', 'No hay producto seleccionado.');
-        return;
-      }
-
-      if (quantity <= 0) {
-        Alert.alert('Cantidad inválida', 'La cantidad debe ser mayor a cero.');
-        return;
-      }
-
-      const existingProductsJson = await AsyncStorage.getItem('products');
-      let productsInCart = existingProductsJson ? JSON.parse(existingProductsJson) : [];
-
-      const itemIndexInCart = productsInCart.findIndex((p: any) => p.itemCode === selectedItem.itemCode);
-
-      if (itemIndexInCart > -1) {
-        Alert.alert(
-          'Producto ya en carrito',
-          `"${selectedItem.itemName}" ya está en tu carrito. ¿Deseas actualizar la cantidad?`,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Actualizar',
-              onPress: async () => {
-                productsInCart[itemIndexInCart] = { ...selectedItem, quantity, unitPrice, total };
-                await AsyncStorage.setItem('products', JSON.stringify(productsInCart));
-                console.log('Producto actualizado en el carrito:', selectedItem);
-                Alert.alert('Actualizado', `Cantidad de "${selectedItem.itemName}" actualizada en el carrito.`);
-                bottomSheetModalRef.current?.dismiss();
-              },
-            },
-          ]
-        );
-      } else {
-        productsInCart.push({ ...selectedItem, quantity, unitPrice, total });
-        await AsyncStorage.setItem('products', JSON.stringify(productsInCart));
-        console.log('Producto agregado al carrito:', selectedItem);
-        Alert.alert('Agregado', `"${selectedItem.itemName}" agregado al carrito.`);
-        bottomSheetModalRef.current?.dismiss();
-      }
-    } catch (e) {
-      console.error('Error al guardar en AsyncStorage', e);
-      Alert.alert('Error', 'No se pudo agregar el producto al carrito.');
+  const handleAddToCart = useCallback(() => {
+    if (!selectedItem) {
+      Alert.alert('Error', 'No hay producto seleccionado.');
+      return;
     }
-  }, [selectedItem, quantity, unitPrice, total]);
+    if (quantity <= 0) {
+      Alert.alert('Cantidad inválida', 'La cantidad debe ser mayor a cero.');
+      return;
+    }
+
+    const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
+
+    // Prepare the product data for the store, omitting 'total' as the store calculates it
+    const productDataForCart = {
+      ...selectedItem,
+      quantity: quantity,
+      unitPrice: unitPrice, // Use the calculated unitPrice
+    };
+
+    if (itemInCart) {
+      Alert.alert(
+        'Producto ya en carrito',
+        `"${selectedItem.itemName}" ya está en tu carrito. ¿Deseas actualizar la cantidad?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Actualizar',
+            onPress: () => {
+              // --- CORRECTED: Pass only itemCode and quantity to updateQuantity ---
+              updateQuantity(selectedItem.itemCode, quantity);
+              Alert.alert('Actualizado', `Cantidad de "${selectedItem.itemName}" actualizada en el carrito.`);
+              bottomSheetModalRef.current?.dismiss();
+            },
+          },
+        ]
+      );
+    } else {
+      // --- CORRECTED: Pass productDataForCart (without total) to addProduct ---
+      addProduct(productDataForCart);
+      Alert.alert('Agregado', `"${selectedItem.itemName}" agregado al carrito.`);
+      bottomSheetModalRef.current?.dismiss();
+    }
+  }, [selectedItem, quantity, unitPrice, addProduct, updateQuantity, productsInCart]); // Removed 'total' from dependencies as it's derived
 
   const filteredItems = useMemo(() => {
     let currentItems = Array.isArray(items) ? items : [];
@@ -234,7 +236,7 @@ const CategoryProductScreen = memo(() => {
               <Text className='font-[Poppins-Regular] text-xs text-gray-600'>Precios por cantidad:</Text>
               {item.tiers.map((tier, i) => (
                 <Text key={i} className='font-[Poppins-Regular] text-xs text-gray-500'>
-                  {`  • Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
+                  {`   • Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
                 </Text>
               ))}
             </View>
@@ -376,12 +378,10 @@ const CategoryProductScreen = memo(() => {
                         marginHorizontal: 16,
                         color: 'black',
                       }}
-                    // maxLength removed to allow any length
                     />
                     <TouchableOpacity
                       className="bg-gray-200 rounded-full p-2"
                       onPress={() => setQuantity((q) => q + 1)} // No stock limit here
-                    // disabled removed
                     >
                       <PlusIcon size={20} />
                     </TouchableOpacity>
