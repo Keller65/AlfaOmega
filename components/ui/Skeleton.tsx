@@ -16,7 +16,7 @@ const PulseView = ({ className }: { className?: string }) => {
       -1,
       true
     )
-  }, [])
+  }, [opacity])
 
   const animatedStyle = useAnimatedStyle(() => {
     return {

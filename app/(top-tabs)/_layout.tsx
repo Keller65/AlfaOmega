@@ -6,8 +6,8 @@ import { useAuth } from '../../context/auth';
 import slugify from 'slugify';
 
 const Tab = createMaterialTopTabNavigator();
-import CategoryProductScreen from './category-product-list.tsx';
 
+import CategoryProductScreen from './category-product-list.tsx';
 interface ProductData {
   itemCode: string;
   itemName: string;

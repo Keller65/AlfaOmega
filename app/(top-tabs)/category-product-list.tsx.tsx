@@ -1,13 +1,12 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
+import { useCartStore } from '@/state/index';
 import axios from 'axios';
 import "../../global.css";
-import { useCartStore } from '@/state/index'; // Import the Zustand store
 
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
@@ -289,7 +288,7 @@ const CategoryProductScreen = memo(() => {
       {filteredItems.length === 0 ? (
         <View style={styles.fullScreenCenter}>
           <Text className="text-center text-gray-500 mt-4">
-            No se encontraron productos para "{rawSearchText}" en esta categoría.
+            No se encontraron productos para {rawSearchText} en esta categoría.
           </Text>
         </View>
       ) : (

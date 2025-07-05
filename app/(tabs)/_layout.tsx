@@ -2,10 +2,8 @@ import { Tabs } from 'expo-router';
 import ProtectedLayout from '../ProtectedLayout';
 import React from 'react';
 import { Platform } from 'react-native';
-import { useColorScheme } from '@/hooks/useColorScheme';
 
 import HomeIcon from '@/assets/icons/HomeIcon';
-import UsersIcon from '@/assets/icons/UsersIcon';
 import InvoicesIcon from '@/assets/icons/InvoicesIcon';
 import SettingsIcon from '@/assets/icons/SettingsIcon';
 import CartIcon from '@/assets/icons/CartIcon';
@@ -13,13 +11,10 @@ import OrderIcon from '@/assets/icons/OrdeIcon'
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
-  BottomSheetModal,
-  BottomSheetView,
   BottomSheetModalProvider,
 } from '@gorhom/bottom-sheet';
 
 export default function Layout() {
-  const colorScheme = useColorScheme();
   return (
     <GestureHandlerRootView>
       <BottomSheetModalProvider>

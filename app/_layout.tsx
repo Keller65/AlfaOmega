@@ -1,11 +1,10 @@
-import { Slot, Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { AuthProvider } from '../context/auth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { Image } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 

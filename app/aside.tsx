@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import Constants from 'expo-constants';
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
