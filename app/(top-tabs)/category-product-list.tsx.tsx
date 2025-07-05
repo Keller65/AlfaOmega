@@ -1,7 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
@@ -213,8 +213,13 @@ const CategoryProductScreen = memo(() => {
     >
       <View className='flex-row gap-3 p-3'>
         <View className='size-[100px] rounded-lg bg-gray-200 flex items-center justify-center'>
-          <Text className="text-gray-500 text-xs">No Image</Text>
+          <Image
+            source={{ uri: "https://res.cloudinary.com/dorcubmfk/image/upload/v1751675261/bote_de_chile_tabasco_1_galon_qaly7a.png" }}
+            style={{ width: 100, height: 100 }}
+            resizeMode="contain"
+          />
         </View>
+
         <View className='flex-1 justify-center'>
           <Text className='font-[Poppins-SemiBold] text-base leading-5 mb-1'>{item.itemName}</Text>
           <Text className='font-[Poppins-Medium] text-sm text-gray-600'>Código: {item.itemCode}</Text>
@@ -321,7 +326,14 @@ const CategoryProductScreen = memo(() => {
           {selectedItem ? (
             <View className="w-full px-4 gap-y-8">
               <View>
-                <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4' />
+                <View className='w-full h-[200px] flex items-center justify-center bg-gray-200 rounded-xl mb-4'>
+                  <Image
+                    source={{ uri: "https://res.cloudinary.com/dorcubmfk/image/upload/v1751675261/bote_de_chile_tabasco_1_galon_qaly7a.png" }}
+                    style={{ width: 200, height: 200 }}
+                    resizeMode="contain"
+                  />
+                </View>
+
                 <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
                 <Text>UPC: {selectedItem.itemCode}</Text>
                 <Text>Stock: {selectedItem.inStock}</Text>
