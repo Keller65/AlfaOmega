@@ -1,17 +1,17 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
-import axios from 'axios';
 import { useRoute } from '@react-navigation/native';
+import axios from 'axios';
 import "../../global.css";
 
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
 
-export default function Product() {
+const CategoryProductScreen = memo(() => {
   const { user } = useAuth();
   const route = useRoute();
   const { groupName, groupCode } = route.params as { groupName?: string; groupCode?: string };
@@ -23,7 +23,8 @@ export default function Product() {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
-  const [searchText, setSearchText] = useState<string>('');
+  const [rawSearchText, setRawSearchText] = useState<string>('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
   const snapPoints = useMemo(() => ['69%', '76%'], []);
@@ -31,6 +32,16 @@ export default function Product() {
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) setSelectedItem(null);
   }, []);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchText(rawSearchText);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [rawSearchText]);
 
   useEffect(() => {
     const fetchAllProducts = async () => {
@@ -117,22 +128,21 @@ export default function Product() {
     setTotal(newUnitPrice * quantity);
   }, [selectedItem, quantity]);
 
-  const handleProductPress = (item: ProductDiscount) => {
+  const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
     setQuantity(1);
     bottomSheetModalRef.current?.present();
-  };
+  }, []);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     try {
       if (!selectedItem) {
         Alert.alert('Error', 'No hay producto seleccionado.');
         return;
       }
 
-      const availableStock = selectedItem.inStock - selectedItem.committed;
-      if (quantity > availableStock) {
-        Alert.alert('Stock insuficiente', `Solo hay ${availableStock} unidades disponibles de ${selectedItem.itemName}.`);
+      if (quantity <= 0) {
+        Alert.alert('Cantidad inválida', 'La cantidad debe ser mayor a cero.');
         return;
       }
 
@@ -170,7 +180,7 @@ export default function Product() {
       console.error('Error al guardar en AsyncStorage', e);
       Alert.alert('Error', 'No se pudo agregar el producto al carrito.');
     }
-  };
+  }, [selectedItem, quantity, unitPrice, total]);
 
   const filteredItems = useMemo(() => {
     let currentItems = Array.isArray(items) ? items : [];
@@ -181,9 +191,8 @@ export default function Product() {
       currentItems = currentItems.filter(item => item.groupCode.toString() === groupCode);
     }
 
-    // Aplicar filtro por texto de búsqueda
-    if (searchText) {
-      const text = searchText.toLowerCase();
+    if (debouncedSearchText) {
+      const text = debouncedSearchText.toLowerCase();
       currentItems = currentItems.filter((item) => {
         return (
           item.itemCode?.toLowerCase().includes(text) ||
@@ -193,7 +202,44 @@ export default function Product() {
       });
     }
     return currentItems;
-  }, [items, searchText, groupName, groupCode]);
+  }, [items, debouncedSearchText, groupName, groupCode]);
+
+  const renderProductItem = useCallback(({ item, index }: { item: ProductDiscount; index: number }) => (
+    <TouchableOpacity
+      key={item.itemCode || index}
+      onPress={() => handleProductPress(item)}
+      activeOpacity={0.7}
+      className="mb-4 bg-white rounded-xl shadow-sm overflow-hidden"
+    >
+      <View className='flex-row gap-3 p-3'>
+        <View className='size-[100px] rounded-lg bg-gray-200 flex items-center justify-center'>
+          <Text className="text-gray-500 text-xs">No Image</Text>
+        </View>
+        <View className='flex-1 justify-center'>
+          <Text className='font-[Poppins-SemiBold] text-base leading-5 mb-1'>{item.itemName}</Text>
+          <Text className='font-[Poppins-Medium] text-sm text-gray-600'>Código: {item.itemCode}</Text>
+          <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Stock: {item.inStock}</Text>
+          <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Committed: {item.committed}</Text>
+          <Text className='font-[Poppins-Regular] text-sm text-gray-800'>Precio Base: L.{item.price.toFixed(2)}</Text>
+
+          <Text className='font-[Poppins-SemiBold] text-sm text-blue-700 mt-1'>Disponible: {item.inStock - item.committed}</Text>
+
+          {item.tiers && item.tiers.length > 0 ? (
+            <View className="mt-1">
+              <Text className='font-[Poppins-Regular] text-xs text-gray-600'>Precios por cantidad:</Text>
+              {item.tiers.map((tier, i) => (
+                <Text key={i} className='font-[Poppins-Regular] text-xs text-gray-500'>
+                  {`  • Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
+                </Text>
+              ))}
+            </View>
+          ) : (
+            <Text className='font-[Poppins-Regular] text-xs text-gray-500 mt-1'>Sin precios escalonados</Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  ), [handleProductPress]);
 
   if (!user?.token) {
     return (
@@ -221,181 +267,141 @@ export default function Product() {
     );
   }
 
-  if (filteredItems.length === 0 && !searchText) {
-    return (
-      <View style={styles.fullScreenCenter}>
-        <Text style={styles.emptyText}>No se encontraron productos en esta categoría.</Text>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView style={{ flex: 1 }}>
-      <View>
-        {/* Search Input (Optional: you might want to move this to a header) */}
-        <View className="px-4 py-2 bg-white border-b border-gray-200">
-          <TextInput
-            className="h-12 border border-gray-300 rounded-lg px-4 font-[Poppins-Regular]"
-            placeholder="Buscar productos..."
-            value={searchText}
-            onChangeText={setSearchText}
-            clearButtonMode="while-editing"
-          />
-        </View>
-
-        {/* Lista de productos filtrados */}
-        <View className='p-4'>
-          {filteredItems.length === 0 ? (
-            <Text className="text-center text-gray-500 mt-4">No se encontraron productos para "{searchText}" en esta categoría.</Text>
-          ) : (
-            filteredItems.map((item, idx) => (
-              <TouchableOpacity
-                key={item.itemCode || idx}
-                onPress={() => handleProductPress(item)}
-                activeOpacity={0.7}
-                className="mb-4 bg-white rounded-xl shadow-sm overflow-hidden"
-              >
-                <View className='flex-row gap-3 p-3'>
-                  {/* Placeholder for product image */}
-                  <View className='size-[100px] rounded-lg bg-gray-200 flex items-center justify-center'>
-                    {/* You can add an <Image> component here if you have image URLs */}
-                    <Text className="text-gray-500 text-xs">No Image</Text>
-                  </View>
-                  <View className='flex-1 justify-center'>
-                    <Text className='font-[Poppins-SemiBold] text-base leading-5 mb-1'>{item.itemName}</Text>
-                    <Text className='font-[Poppins-Medium] text-sm text-gray-600'>Código: {item.itemCode}</Text>
-                    <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Stock: {item.inStock}</Text>
-                    <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Comprometido: {item.committed}</Text>
-                    <Text className='font-[Poppins-Regular] text-sm text-gray-800'>Precio Base: L.{item.price.toFixed(2)}</Text>
-
-                    {/* Display Available Stock */}
-                    <Text className='font-[Poppins-SemiBold] text-sm text-blue-700 mt-1'>Disponible: {item.inStock - item.committed}</Text>
-
-                    {item.tiers && item.tiers.length > 0 ? (
-                      <View className="mt-1">
-                        <Text className='font-[Poppins-Regular] text-xs text-gray-600'>Precios por cantidad:</Text>
-                        {item.tiers.map((tier, i) => (
-                          <Text key={i} className='font-[Poppins-Regular] text-xs text-gray-500'>
-                            {`  • Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : (
-                      <Text className='font-[Poppins-Regular] text-xs text-gray-500 mt-1'>Sin precios escalonados</Text>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        {/* MODAL (BottomSheetModal) */}
-        <BottomSheetModal
-          ref={bottomSheetModalRef}
-          onChange={handleSheetChanges}
-          snapPoints={snapPoints}
-          backdropComponent={(props) => (
-            <BottomSheetBackdrop
-              {...props}
-              appearsOnIndex={0}
-              disappearsOnIndex={-1}
-              opacity={0.5}
-              pressBehavior="close"
-            />
-          )}
-        >
-          <BottomSheetView
-            style={{
-              flex: 1,
-              minHeight: Dimensions.get('window').height * 0.67,
-              alignItems: 'center',
-            }}
-          >
-            {selectedItem ? (
-              <View className="w-full px-4 gap-y-8">
-                <View>
-                  <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4' />
-                  <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
-                  <Text>UPC: {selectedItem.itemCode}</Text>
-                  <Text>Stock: {selectedItem.inStock}</Text>
-                  <Text>Committed: {selectedItem.committed}</Text>
-                  <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
-
-                  {(selectedItem.tiers && selectedItem.tiers.length > 0) && (
-                    <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                      <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
-                      {selectedItem.tiers.map((tier, index) => (
-                        <Text key={index} className="text-sm text-gray-700">
-                          {`Desde ${tier.qty} unidades: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
-                        </Text>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                <View>
-                  <View className='flex-row items-center justify-between w-full'>
-                    <View className="flex-row items-center mt-4 mb-2">
-                      <TouchableOpacity
-                        className="bg-gray-200 rounded-full p-2"
-                        onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                        disabled={quantity <= 1}
-                      >
-                        <MinusIcon size={20} />
-                      </TouchableOpacity>
-                      <TextInput
-                        value={quantity.toString()}
-                        onChangeText={(text) => {
-                          const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                          const maxQuantity = selectedItem.inStock - selectedItem.committed;
-                          setQuantity(!isNaN(num) ? Math.max(1, Math.min(num, maxQuantity)) : 1);
-                        }}
-                        keyboardType="numeric"
-                        style={{
-                          width: 48,
-                          textAlign: 'center',
-                          fontSize: 18,
-                          marginHorizontal: 16,
-                          color: 'black',
-                        }}
-                        maxLength={5}
-                      />
-                      <TouchableOpacity
-                        className="bg-gray-200 rounded-full p-2"
-                        onPress={() => setQuantity((q) => Math.min(q + 1, selectedItem.inStock - selectedItem.committed))}
-                        disabled={quantity >= (selectedItem.inStock - selectedItem.committed)}
-                      >
-                        <PlusIcon size={20} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <View className="mt-2 mb-2 w-[126px]">
-                      <Text className="text-base text-gray-500 font-[Poppins-Regular] leading-4">Total</Text>
-                      <Text className="text-2xl font-[Poppins-Bold] leading-6">L.{total.toFixed(2)}</Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
-                    onPress={handleAddToCart}
-                    disabled={quantity <= 0 || (selectedItem.inStock - selectedItem.committed) <= 0}
-                  >
-                    <Text className="text-white font-bold">Agregar al carrito</Text>
-                  </TouchableOpacity>
-
-                  {unitPrice && <Text className="text-sm text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
-                </View>
-              </View>
-            ) : (
-              <Text className="text-lg font-semibold">Selecciona un producto</Text>
-            )}
-          </BottomSheetView>
-        </BottomSheetModal>
+    <View style={{ flex: 1 }}>
+      <View className="px-4 py-2 bg-white border-b border-gray-200">
+        <TextInput
+          className="h-12 border border-gray-300 rounded-lg px-4 font-[Poppins-Regular]"
+          placeholder="Buscar productos..."
+          value={rawSearchText}
+          onChangeText={setRawSearchText}
+          clearButtonMode="while-editing"
+        />
       </View>
-    </ScrollView>
+
+      {filteredItems.length === 0 ? (
+        <View style={styles.fullScreenCenter}>
+          <Text className="text-center text-gray-500 mt-4">
+            No se encontraron productos para "{rawSearchText}" en esta categoría.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredItems}
+          renderItem={renderProductItem}
+          keyExtractor={(item) => item.itemCode}
+          contentContainerStyle={{ padding: 16 }}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={21}
+        />
+      )}
+
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        onChange={handleSheetChanges}
+        snapPoints={snapPoints}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            appearsOnIndex={0}
+            disappearsOnIndex={-1}
+            opacity={0.5}
+            pressBehavior="close"
+          />
+        )}
+      >
+        <BottomSheetView
+          style={{
+            flex: 1,
+            minHeight: Dimensions.get('window').height * 0.67,
+            alignItems: 'center',
+          }}
+        >
+          {selectedItem ? (
+            <View className="w-full px-4 gap-y-8">
+              <View>
+                <View className='w-full h-[200px] bg-gray-200 rounded-xl mb-4' />
+                <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
+                <Text>UPC: {selectedItem.itemCode}</Text>
+                <Text>Stock: {selectedItem.inStock}</Text>
+                <Text>Committed: {selectedItem.committed}</Text>
+                <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+
+                {(selectedItem.tiers && selectedItem.tiers.length > 0) && (
+                  <View className="bg-gray-100 p-3 rounded-lg mt-4">
+                    <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
+                    {selectedItem.tiers.map((tier, index) => (
+                      <Text key={index} className="text-sm text-gray-700">
+                        {`Desde ${tier.qty} unidades: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              <View>
+                <View className='flex-row items-center justify-between w-full'>
+                  <View className="flex-row items-center mt-4 mb-2">
+                    <TouchableOpacity
+                      className="bg-gray-200 rounded-full p-2"
+                      onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+                      disabled={quantity <= 1}
+                    >
+                      <MinusIcon size={20} />
+                    </TouchableOpacity>
+                    <TextInput
+                      value={quantity.toString()}
+                      onChangeText={(text) => {
+                        const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                        setQuantity(!isNaN(num) ? Math.max(1, num) : 1); // No stock limit here
+                      }}
+                      keyboardType="numeric"
+                      style={{
+                        width: 48,
+                        textAlign: 'center',
+                        fontSize: 18,
+                        marginHorizontal: 16,
+                        color: 'black',
+                      }}
+                    // maxLength removed to allow any length
+                    />
+                    <TouchableOpacity
+                      className="bg-gray-200 rounded-full p-2"
+                      onPress={() => setQuantity((q) => q + 1)} // No stock limit here
+                    // disabled removed
+                    >
+                      <PlusIcon size={20} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View className="mt-2 mb-2 w-[126px]">
+                    <Text className="text-base text-gray-500 font-[Poppins-Regular] leading-4">Total</Text>
+                    <Text className="text-2xl font-[Poppins-Bold] leading-6">L.{total.toFixed(2)}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
+                  onPress={handleAddToCart}
+                  disabled={quantity <= 0}
+                >
+                  <Text className="text-white font-bold">Agregar al carrito</Text>
+                </TouchableOpacity>
+
+                {unitPrice && <Text className="text-sm text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
+              </View>
+            </View>
+          ) : (
+            <Text className="text-lg font-semibold">Selecciona un producto</Text>
+          )}
+        </BottomSheetView>
+      </BottomSheetModal>
+    </View>
   );
-}
+});
+
+export default CategoryProductScreen;
 
 const styles = StyleSheet.create({
   fullScreenCenter: {
