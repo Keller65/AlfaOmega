@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import { AuthProvider } from '../context/auth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { TextInput } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -40,14 +41,25 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: true,
-              headerTitleAlign: 'center',
-              headerTitle: 'Nuevo Pedido',
+              headerTitle: () => (
+                <TextInput
+                  placeholder="Buscar Producto"
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    paddingHorizontal: 14,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    width: 300,
+                    height: 36,
+                    fontSize: 14,
+                    fontFamily: 'Poppins-Regular',
+                  }}
+                  className='font-[Poppins-SemiBold]'
+                  placeholderTextColor="#888"
+                />
+              ),
               headerStyle: { backgroundColor: '#fff' },
               headerShadowVisible: false,
-              headerTitleStyle: {
-                fontFamily: 'Poppins-SemiBold',
-                fontSize: 18,
-              },
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
