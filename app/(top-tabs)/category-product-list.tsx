@@ -1,10 +1,10 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native'; // Importa RefreshControl
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
-import { useCartStore } from '@/state/index';
+import { useAppStore } from '@/state/index';
 import axios from 'axios';
 import "../../global.css";
 
@@ -16,9 +16,11 @@ const CategoryProductScreen = memo(() => {
   const route = useRoute();
   const { groupName, groupCode } = route.params as { groupName?: string; groupCode?: string };
 
-  const addProduct = useCartStore(state => state.addProduct);
-  const updateQuantity = useCartStore(state => state.updateQuantity);
-  const productsInCart = useCartStore(state => state.products);
+  const addProduct = useAppStore(state => state.addProduct);
+  const updateQuantity = useAppStore(state => state.updateQuantity);
+  const productsInCart = useAppStore(state => state.products);
+  const allProductsCache = useAppStore(state => state.allProductsCache);
+  const setAllProductsCache = useAppStore(state => state.setAllProductsCache);
 
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,7 @@ const CategoryProductScreen = memo(() => {
   const [rawSearchText, setRawSearchText] = useState<string>('');
   const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const snapPoints = useMemo(() => ['69%', '76%'], []);
 
@@ -47,70 +50,87 @@ const CategoryProductScreen = memo(() => {
     };
   }, [rawSearchText]);
 
-  useEffect(() => {
-    const fetchAllProducts = async () => {
-      if (!user?.token) {
-        setLoading(false);
-        setError('No se ha iniciado sesión o el token no está disponible.');
-        return;
+  const fetchProducts = useCallback(async () => {
+    if (!user?.token) {
+      setLoading(false);
+      setError('No se ha iniciado sesión o el token no está disponible.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const headers = {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json',
+      };
+
+      const [resGeneral, resDescuento] = await Promise.all([
+        axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/Items/Active', { headers }),
+        axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/items/discounted', { headers }),
+      ]);
+
+      const dataGeneral = resGeneral.data;
+      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
+
+      const descuentoMap = new Map<string, ProductDiscount>();
+      for (const item of dataDescuento) {
+        descuentoMap.set(item.itemCode, item);
       }
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        const headers = {
-          Authorization: `Bearer ${user.token}`,
-          'Content-Type': 'application/json',
-        };
-
-        const [resGeneral, resDescuento] = await Promise.all([
-          axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/Items/Active', { headers }),
-          axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/items/discounted', { headers }),
-        ]);
-
-        const dataGeneral = resGeneral.data;
-        const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
-
-        const descuentoMap = new Map<string, ProductDiscount>();
-        for (const item of dataDescuento) {
-          descuentoMap.set(item.itemCode, item);
-        }
-
-        const productosCombinados = dataGeneral.map((producto: ProductDiscount) => {
-          if (descuentoMap.has(producto.itemCode)) {
-            const descuento = descuentoMap.get(producto.itemCode);
-            return {
-              ...producto,
-              tiers: descuento?.tiers || [],
-              hasDiscount: true,
-            };
-          }
+      const productosCombinados = dataGeneral.map((producto: ProductDiscount) => {
+        if (descuentoMap.has(producto.itemCode)) {
+          const descuento = descuentoMap.get(producto.itemCode);
           return {
             ...producto,
-            hasDiscount: false,
-            tiers: [],
+            tiers: descuento?.tiers || [],
+            hasDiscount: true,
           };
-        });
-
-        setItems(productosCombinados);
-      } catch (err: any) {
-        console.error('Error al cargar productos con axios:', err);
-        if (err.response) {
-          setError(`Error del servidor: ${err.response.status} - ${err.response.data?.message || 'Mensaje desconocido'}`);
-        } else if (err.request) {
-          setError('No se pudo conectar al servidor. Verifica tu conexión.');
-        } else {
-          setError(`Ocurrió un error inesperado: ${err.message}`);
         }
-        setItems([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+        return {
+          ...producto,
+          hasDiscount: false,
+          tiers: [],
+        };
+      });
 
-    fetchAllProducts();
-  }, [user?.token]);
+      setItems(productosCombinados);
+      setAllProductsCache(productosCombinados);
+    } catch (err: any) {
+      console.error('Error al cargar productos con axios:', err);
+      if (err.response) {
+        setError(`Error del servidor: ${err.response.status} - ${err.response.data?.message || 'Mensaje desconocido'}`);
+      } else if (err.request) {
+        setError('No se pudo conectar al servidor. Verifica tu conexión.');
+      } else {
+        setError(`Ocurrió un error inesperado: ${err.message}`);
+      }
+      setItems([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.token, setAllProductsCache]);
+
+  useEffect(() => {
+    if (!user?.token) return;
+
+    if (allProductsCache.length > 0) {
+      setItems(allProductsCache);
+      setLoading(false);
+      console.log('Productos cargados desde caché.');
+    } else {
+      console.log('Cargando productos desde la API...');
+      fetchProducts();
+    }
+  }, [user?.token, allProductsCache, fetchProducts]);
+
+  // Manejador para pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchProducts();
+  }, [fetchProducts]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -228,24 +248,24 @@ const CategoryProductScreen = memo(() => {
 
   if (!user?.token) {
     return (
-      <View style={styles.fullScreenCenter}>
+      <View className='flex-1 items-center justify-center'>
         <Text style={styles.errorText}>No has iniciado sesión o tu sesión ha expirado.</Text>
       </View>
     );
   }
 
-  if (loading) {
+  if (loading && items.length === 0) {
     return (
-      <View style={styles.fullScreenCenter}>
+      <View className='flex-1 items-center justify-center'>
         <ActivityIndicator size="large" color="#007bff" />
         <Text className='font-[Poppins-Regular]'>Cargando productos...</Text>
       </View>
     );
   }
 
-  if (error) {
+  if (error && items.length === 0) {
     return (
-      <View style={styles.fullScreenCenter}>
+      <View className='flex-1 items-center justify-center'>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.subText}>Por favor, intenta de nuevo más tarde.</Text>
       </View>
@@ -254,6 +274,7 @@ const CategoryProductScreen = memo(() => {
 
   return (
     <View style={{ flex: 1 }} className="bg-white">
+      {/* Puedes descomentar y usar este TextInput si lo necesitas */}
       {/* <View className="px-4 py-2 bg-white border-b border-gray-200">
         <TextInput
           className="h-12 border border-gray-300 rounded-lg px-4 font-[Poppins-Regular]"
@@ -264,7 +285,7 @@ const CategoryProductScreen = memo(() => {
         />
       </View> */}
 
-      {filteredItems.length === 0 ? (
+      {filteredItems.length === 0 && !loading ? ( // Muestra mensaje de "no encontrados" solo si no está cargando
         <View style={styles.fullScreenCenter}>
           <Text className="text-center text-gray-500 mt-4">
             No se encontraron productos para {rawSearchText} en esta categoría.
@@ -282,6 +303,15 @@ const CategoryProductScreen = memo(() => {
           windowSize={21}
           numColumns={2}
           collapsable
+          // NUEVO: Pull-to-refresh
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#007bff" // Color del spinner en iOS
+              colors={['#007bff']} // Colores del spinner en Android
+            />
+          }
         />
       )}
 
@@ -349,7 +379,7 @@ const CategoryProductScreen = memo(() => {
                       value={quantity.toString()}
                       onChangeText={(text) => {
                         const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                        setQuantity(!isNaN(num) ? Math.max(1, num) : 1); // No stock limit here
+                        setQuantity(!isNaN(num) ? Math.max(1, num) : 1);
                       }}
                       keyboardType="numeric"
                       style={{
@@ -359,10 +389,11 @@ const CategoryProductScreen = memo(() => {
                         marginHorizontal: 16,
                         color: 'black',
                       }}
+                      maxLength={3} // Añadido para evitar números excesivamente largos
                     />
                     <TouchableOpacity
                       className="bg-gray-200 rounded-full p-2"
-                      onPress={() => setQuantity((q) => q + 1)} // No stock limit here
+                      onPress={() => setQuantity((q) => q + 1)}
                     >
                       <PlusIcon size={20} />
                     </TouchableOpacity>

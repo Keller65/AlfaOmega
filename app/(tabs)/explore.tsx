@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import PlusIcon from '@/assets/icons/PlusIcon';
 import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
-import { useCartStore } from '@/state/index';
+import { useAppStore } from '@/state/index';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, } from '@gorhom/bottom-sheet';
 import { useRef, useMemo, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -12,9 +12,9 @@ import TrashIcon from '@/assets/icons/TrashIcon';
 
 export default function PedidosScreen() {
   const router = useRouter();
-  const products = useCartStore((state) => state.products);
-  const updateQuantity = useCartStore((state) => state.updateQuantity);
-  const removeProduct = useCartStore((state) => state.removeProduct);
+  const products = useAppStore((state) => state.products);
+  const updateQuantity = useAppStore((state) => state.updateQuantity);
+  const removeProduct = useAppStore((state) => state.removeProduct);
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => sum + item.total, 0);
@@ -96,7 +96,7 @@ export default function PedidosScreen() {
         )}
         <TouchableOpacity
           className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f]"
-          onPress={() => router.push('/aside')}
+          onPress={() => router.push('/client')}
         >
           <PlusIcon color="white" />
         </TouchableOpacity>
@@ -127,7 +127,7 @@ export default function PedidosScreen() {
               <TouchableOpacity
                 onPress={() => {
                   closeCart();
-                  router.push('/aside'); // O a la pantalla principal de productos
+                  router.push('/client');
                 }}
                 className="mt-4 px-4 py-2 bg-blue-500 rounded-lg"
               >
@@ -136,7 +136,7 @@ export default function PedidosScreen() {
             </View>
           ) : (
             <BottomSheetFlatList
-              className="mb-[100px]" // Ajusta este margen si es necesario para el footer
+              className="mb-[100px]"
               data={products}
               keyExtractor={(item) => item.itemCode}
               renderItem={({ item }) => (
@@ -158,14 +158,14 @@ export default function PedidosScreen() {
                       <TextInput
                         className="border border-gray-300 rounded-md px-2 py-1 text-center w-[50px] text-black"
                         keyboardType="numeric"
-                        value={String(item.quantity)} // Asegurarse de que sea una cadena explícitamente
+                        value={String(item.quantity)}
                         onChangeText={(text) => {
                           const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                          // Permitir 0 aquí para que el store lo elimine
                           if (!isNaN(num)) {
                             updateQuantity(item.itemCode, num);
                           }
                         }}
+                        maxLength={3}
                       />
 
                       <TouchableOpacity
@@ -175,14 +175,12 @@ export default function PedidosScreen() {
                         <PlusIcon size={18} />
                       </TouchableOpacity>
                     </View>
-                    {/* Asegurarse de que los precios sean cadenas explícitamente */}
                     <Text className="text-sm text-gray-600">Precio: L. {item.unitPrice.toFixed(2)}</Text>
                     <Text className="text-sm font-bold">Subtotal: L. {item.total.toFixed(2)}</Text>
                   </View>
-                  {/* Botón de eliminar */}
                   <TouchableOpacity
                     onPress={() => handleRemoveItem(item.itemCode, item.itemName)}
-                    className="p-2 rounded-full bg-red-100 self-start" // self-start para alinearse arriba
+                    className="p-2 rounded-full bg-red-100 self-start"
                   >
                     <TrashIcon size={20} color="red" />
                   </TouchableOpacity>

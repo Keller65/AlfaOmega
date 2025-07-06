@@ -55,14 +55,6 @@ export default function Layout() {
             />
 
             <Tabs.Screen
-              name="shopping"
-              options={{
-                title: 'Carrito',
-                tabBarIcon: ({ color }) => <CartIcon size={26} color={color} />,
-              }}
-            />
-
-            <Tabs.Screen
               name="settings"
               options={{
                 title: 'Ajustes',

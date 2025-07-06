@@ -23,7 +23,6 @@ export default function RootLayout() {
     'Poppins-ThinItalic': require('../assets/fonts/Poppins-ThinItalic.ttf'),
     'Poppins-ExtraBold': require('../assets/fonts/Poppins-ExtraBold.ttf'),
     'Poppins-Black': require('../assets/fonts/Poppins-Black.ttf'),
-    'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   useEffect(() => {
@@ -41,29 +40,38 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: true,
-              headerTitle: () => (
-                <TextInput
-                  placeholder="Buscar Producto"
-                  style={{
-                    backgroundColor: '#f0f0f0',
-                    paddingHorizontal: 14,
-                    paddingVertical: 4,
-                    borderRadius: 8,
-                    width: 300,
-                    height: 36,
-                    fontSize: 14,
-                    fontFamily: 'Poppins-Regular',
-                  }}
-                  className='font-[Poppins-SemiBold]'
-                  placeholderTextColor="#888"
-                />
-              ),
               headerStyle: { backgroundColor: '#fff' },
               headerShadowVisible: false,
+              headerTitle: "Seleccionar Cliente",
+              headerTitleStyle: {
+                fontFamily: "Poppins-SemiBold"
+              }
             }}
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+
+            <Stack.Screen name="shop"
+              options={{
+                headerShown: true,
+                headerTitle: () => (
+                  <TextInput
+                    placeholder="Buscar Producto"
+                    style={{
+                      backgroundColor: '#f0f0f0',
+                      paddingHorizontal: 18,
+                      paddingVertical: 4,
+                      borderRadius: 20,
+                      width: 300,
+                      height: 36,
+                      fontSize: 14,
+                      fontFamily: 'Poppins-Regular',
+                    }}
+                    placeholderTextColor="#888"
+                  />
+                ),
+              }}
+            />
           </Stack>
         </BottomSheetModalProvider>
       </AuthProvider>
