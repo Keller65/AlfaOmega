@@ -7,14 +7,14 @@ import MinusIcon from '@/assets/icons/MinusIcon';
 import { useCartStore } from '@/state/index';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, } from '@gorhom/bottom-sheet';
 import { useRef, useMemo, useCallback } from 'react';
-import * as Haptics from 'expo-haptics'; // Importar Haptics para vibración
-import TrashIcon from '@/assets/icons/TrashIcon'; // Asumiendo que tienes un icono de papelera/basura
+import * as Haptics from 'expo-haptics';
+import TrashIcon from '@/assets/icons/TrashIcon';
 
 export default function PedidosScreen() {
   const router = useRouter();
   const products = useCartStore((state) => state.products);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
-  const removeProduct = useCartStore((state) => state.removeProduct); // Importar la función para eliminar
+  const removeProduct = useCartStore((state) => state.removeProduct);
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => sum + item.total, 0);
@@ -35,7 +35,6 @@ export default function PedidosScreen() {
         <View className="bg-white border-t border-gray-200 px-4 py-4">
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-base text-gray-700 font-[Poppins-Medium]">Total</Text>
-            {/* Asegurarse de que el total sea una cadena explícitamente */}
             <Text className="text-xl font-[Poppins-Bold] text-black">L. {total.toFixed(2)}</Text>
           </View>
 
@@ -56,13 +55,10 @@ export default function PedidosScreen() {
   );
 
   const handleChangeQty = (itemCode: string, type: 'add' | 'sub', currentQty: number) => {
-    // Si se resta, y la cantidad actual es 1, al restar debe quedar en 0 para que el store lo elimine.
-    // Si no, Math.max(1, currentQty - 1) evitaría llegar a 0.
     const newQty = type === 'add' ? currentQty + 1 : currentQty - 1;
     updateQuantity(itemCode, newQty);
   };
 
-  // Nueva función para eliminar un artículo
   const handleRemoveItem = useCallback((itemCode: string, itemName: string) => {
     Alert.alert(
       'Eliminar producto',
@@ -75,7 +71,7 @@ export default function PedidosScreen() {
         {
           text: 'Eliminar',
           onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); // Vibración al eliminar
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             removeProduct(itemCode);
           },
         },
@@ -89,7 +85,7 @@ export default function PedidosScreen() {
       className="flex-1 bg-white"
       style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}
     >
-      <View className="absolute bottom-8 right-8 gap-3 items-end z-10"> {/* Añadido z-10 para asegurar que esté por encima */}
+      <View className="absolute bottom-8 right-8 gap-3 items-end z-10">
         {products.length > 0 && (
           <TouchableOpacity
             className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f]"

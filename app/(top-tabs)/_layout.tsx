@@ -46,8 +46,7 @@ export default function TopTabNavigatorLayout() {
 
         const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/active', { headers });
         const allProducts = response.data;
-
-        // Extraer categorías únicas
+        
         const uniqueCategories = new Map<number, string>();
         for (const product of allProducts) {
           if (product.groupCode && product.groupName) {
@@ -121,17 +120,18 @@ export default function TopTabNavigatorLayout() {
       <Tab.Navigator
         initialRouteName={categories[0]?.slug || 'carrito'}
         screenOptions={{
-          tabBarActiveTintColor: '#09f',
+          tabBarActiveTintColor: '#000',
           tabBarInactiveTintColor: 'gray',
           tabBarIndicatorStyle: {
-            backgroundColor: '#09f',
-            height: 3,
+            backgroundColor: '#000',
+            height: 2
           },
           tabBarStyle: {
             backgroundColor: 'white',
           },
           tabBarLabelStyle: {
             fontSize: 12,
+            width: 230,
             fontWeight: 'bold',
           },
           tabBarPressColor: '#09f',

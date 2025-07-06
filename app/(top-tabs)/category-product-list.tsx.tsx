@@ -206,38 +206,21 @@ const CategoryProductScreen = memo(() => {
       key={item.itemCode || index}
       onPress={() => handleProductPress(item)}
       activeOpacity={0.7}
-      className="mb-4 bg-white rounded-xl shadow-sm overflow-hidden"
+      className="mb-4 bg-white overflow-hidden w-[190px]"
     >
-      <View className='flex-row gap-3 p-3'>
-        <View className='size-[100px] rounded-lg bg-gray-200 flex items-center justify-center'>
+      <View className='flex gap-3 p-2'>
+        <View className='flex-1 overflow-hidden rounded-2xl bg-gray-100 flex items-center justify-center h-[180px]'>
           <Image
             source={{ uri: "https://res.cloudinary.com/dorcubmfk/image/upload/v1751675261/bote_de_chile_tabasco_1_galon_qaly7a.png" }}
-            style={{ width: 100, height: 100 }}
+            style={{ width: 150, height: 150 }}
             resizeMode="contain"
           />
         </View>
 
-        <View className='flex-1 justify-center'>
-          <Text className='font-[Poppins-SemiBold] text-base leading-5 mb-1'>{item.itemName}</Text>
-          <Text className='font-[Poppins-Medium] text-sm text-gray-600'>Código: {item.itemCode}</Text>
-          <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Stock: {item.inStock}</Text>
-          <Text className='font-[Poppins-Regular] text-sm text-gray-600'>Committed: {item.committed}</Text>
-          <Text className='font-[Poppins-Regular] text-sm text-gray-800'>Precio Base: L.{item.price.toFixed(2)}</Text>
-
-          <Text className='font-[Poppins-SemiBold] text-sm text-blue-700 mt-1'>Disponible: {item.inStock - item.committed}</Text>
-
-          {item.tiers && item.tiers.length > 0 ? (
-            <View className="mt-1">
-              <Text className='font-[Poppins-Regular] text-xs text-gray-600'>Precios por cantidad:</Text>
-              {item.tiers.map((tier, i) => (
-                <Text key={i} className='font-[Poppins-Regular] text-xs text-gray-500'>
-                  {`   • Desde ${tier.qty}u: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
-                </Text>
-              ))}
-            </View>
-          ) : (
-            <Text className='font-[Poppins-Regular] text-xs text-gray-500 mt-1'>Sin precios escalonados</Text>
-          )}
+        <View className='justify-center'>
+          <Text className='font-[Poppins-Medium] text-sm text-black tracking-[-0.3px]'>L. {item.price}</Text>
+          <Text className='font-[Poppins-Medium] text-sm leading-4 tracking-[-0.3px]'>{item.itemName.toLocaleLowerCase()}</Text>
+          <Text className='font-[Poppins-Medium] text-[10px] text-gray-400 tracking-[-0.3px]'>COD: {item.itemCode}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -255,7 +238,7 @@ const CategoryProductScreen = memo(() => {
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Cargando productos...</Text>
+        <Text className='font-[Poppins-Regular]'>Cargando productos...</Text>
       </View>
     );
   }
@@ -270,8 +253,8 @@ const CategoryProductScreen = memo(() => {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <View className="px-4 py-2 bg-white border-b border-gray-200">
+    <View style={{ flex: 1 }} className="bg-white">
+      {/* <View className="px-4 py-2 bg-white border-b border-gray-200">
         <TextInput
           className="h-12 border border-gray-300 rounded-lg px-4 font-[Poppins-Regular]"
           placeholder="Buscar productos..."
@@ -279,7 +262,7 @@ const CategoryProductScreen = memo(() => {
           onChangeText={setRawSearchText}
           clearButtonMode="while-editing"
         />
-      </View>
+      </View> */}
 
       {filteredItems.length === 0 ? (
         <View style={styles.fullScreenCenter}>
@@ -292,10 +275,13 @@ const CategoryProductScreen = memo(() => {
           data={filteredItems}
           renderItem={renderProductItem}
           keyExtractor={(item) => item.itemCode}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
           initialNumToRender={10}
           maxToRenderPerBatch={5}
           windowSize={21}
+          numColumns={2}
+          collapsable
         />
       )}
 
@@ -331,17 +317,17 @@ const CategoryProductScreen = memo(() => {
                   />
                 </View>
 
-                <Text className="text-xl font-semibold mb-2">{selectedItem.itemName}</Text>
-                <Text>UPC: {selectedItem.itemCode}</Text>
-                <Text>Stock: {selectedItem.inStock}</Text>
-                <Text>Committed: {selectedItem.committed}</Text>
-                <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+                <Text className="text-xl mb-2 font-[Poppins-SemiBold] tracking-[-0.4px] leading-5">{selectedItem.itemName}</Text>
+                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>UPC: {selectedItem.itemCode}</Text>
+                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Stock: {selectedItem.inStock}</Text>
+                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Committed: {selectedItem.committed}</Text>
+                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
 
                 {(selectedItem.tiers && selectedItem.tiers.length > 0) && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                    <Text className="font-[Poppins-Medium] mb-1">Precios por cantidad:</Text>
+                    <Text className="font-[Poppins-SemiBold] tracking-[-0.4px] leading-5 mb-1">Precios por cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <Text key={index} className="text-sm text-gray-700">
+                      <Text key={index} className="text-sm text-gray-700 font-[Poppins-Regular] tracking-[-0.4px] leading-5">
                         {`Desde ${tier.qty} unidades: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
                       </Text>
                     ))}
@@ -393,10 +379,10 @@ const CategoryProductScreen = memo(() => {
                   onPress={handleAddToCart}
                   disabled={quantity <= 0}
                 >
-                  <Text className="text-white font-bold">Agregar al carrito</Text>
+                  <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
                 </TouchableOpacity>
 
-                {unitPrice && <Text className="text-sm text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
+                {unitPrice && <Text className="text-[12px] tracking-[-0.4px] text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
               </View>
             </View>
           ) : (
