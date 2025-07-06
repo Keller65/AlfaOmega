@@ -16,9 +16,8 @@ const CategoryProductScreen = memo(() => {
   const route = useRoute();
   const { groupName, groupCode } = route.params as { groupName?: string; groupCode?: string };
 
-  // --- CORRECTED: Use the correct function names from the Zustand store ---
   const addProduct = useCartStore(state => state.addProduct);
-  const updateQuantity = useCartStore(state => state.updateQuantity); // Changed from updateProductQuantity to updateQuantity
+  const updateQuantity = useCartStore(state => state.updateQuantity);
   const productsInCart = useCartStore(state => state.products);
 
   const [items, setItems] = useState<ProductDiscount[]>([]);
@@ -135,7 +134,7 @@ const CategoryProductScreen = memo(() => {
 
   const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
-    setQuantity(1); // Reset quantity when a new product is selected
+    setQuantity(1);
     bottomSheetModalRef.current?.present();
   }, []);
 
@@ -151,11 +150,10 @@ const CategoryProductScreen = memo(() => {
 
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
 
-    // Prepare the product data for the store, omitting 'total' as the store calculates it
     const productDataForCart = {
       ...selectedItem,
       quantity: quantity,
-      unitPrice: unitPrice, // Use the calculated unitPrice
+      unitPrice: unitPrice,
     };
 
     if (itemInCart) {
@@ -167,7 +165,6 @@ const CategoryProductScreen = memo(() => {
           {
             text: 'Actualizar',
             onPress: () => {
-              // --- CORRECTED: Pass only itemCode and quantity to updateQuantity ---
               updateQuantity(selectedItem.itemCode, quantity);
               Alert.alert('Actualizado', `Cantidad de "${selectedItem.itemName}" actualizada en el carrito.`);
               bottomSheetModalRef.current?.dismiss();
@@ -176,12 +173,11 @@ const CategoryProductScreen = memo(() => {
         ]
       );
     } else {
-      // --- CORRECTED: Pass productDataForCart (without total) to addProduct ---
       addProduct(productDataForCart);
       Alert.alert('Agregado', `"${selectedItem.itemName}" agregado al carrito.`);
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [selectedItem, quantity, unitPrice, addProduct, updateQuantity, productsInCart]); // Removed 'total' from dependencies as it's derived
+  }, [selectedItem, quantity, unitPrice, addProduct, updateQuantity, productsInCart]);
 
   const filteredItems = useMemo(() => {
     let currentItems = Array.isArray(items) ? items : [];

@@ -36,7 +36,7 @@ export default function PedidosScreen() {
           <View className="flex-row justify-between items-center mb-3">
             <Text className="text-base text-gray-700 font-[Poppins-Medium]">Total</Text>
             {/* Asegurarse de que el total sea una cadena explícitamente */}
-            <Text className="text-xl font-[Poppins-Bold] text-black">L. <Text>{total.toFixed(2)}</Text></Text>
+            <Text className="text-xl font-[Poppins-Bold] text-black">L. {total.toFixed(2)}</Text>
           </View>
 
           <TouchableOpacity
@@ -180,8 +180,8 @@ export default function PedidosScreen() {
                       </TouchableOpacity>
                     </View>
                     {/* Asegurarse de que los precios sean cadenas explícitamente */}
-                    <Text className="text-sm text-gray-600">Precio: L.<Text>{item.unitPrice.toFixed(2)}</Text></Text>
-                    <Text className="text-sm font-bold">Subtotal: L.<Text>{item.total.toFixed(2)}</Text></Text>
+                    <Text className="text-sm text-gray-600">Precio: L. {item.unitPrice.toFixed(2)}</Text>
+                    <Text className="text-sm font-bold">Subtotal: L. {item.total.toFixed(2)}</Text>
                   </View>
                   {/* Botón de eliminar */}
                   <TouchableOpacity
