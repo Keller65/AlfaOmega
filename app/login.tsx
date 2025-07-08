@@ -1,15 +1,16 @@
 import axios from 'axios';
 import * as Location from 'expo-location';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from "../context/auth";
+import { useAuth, User } from "../context/auth";
 
 export default function Login() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [employeeCode, setEmployeeCode] = useState("");
-  const [password, setPassword] = useState<string>("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,7 +25,32 @@ export default function Login() {
     })();
   }, []);
 
-  const { setUser } = useAuth();
+  // Autenticación biométrica automática
+  useEffect(() => {
+    (async () => {
+      if (user) return;
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (hasHardware && isEnrolled) {
+        const savedBiometricUser = await AsyncStorage.getItem('biometricUser');
+        if (savedBiometricUser) {
+          const biometricAuth = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Inicia sesión con tu huella o Face ID',
+            fallbackLabel: 'Ingresar manualmente',
+          });
+
+          if (biometricAuth.success) {
+            const parsedUser = JSON.parse(savedBiometricUser);
+            setUser(parsedUser);
+            await AsyncStorage.setItem('user', JSON.stringify(parsedUser));
+          }
+        }
+      }
+    })();
+  }, [user]);
+
 
   const handleLogin = async () => {
     if (loading) return;
@@ -42,27 +68,38 @@ export default function Login() {
       });
 
       const data = response.data;
-      const userData = {
+
+      const userData: User = {
         employeeCode: data.salesPersonCode,
         fullName: data.fullName,
-        password: password,
         token: data.token
       };
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData as any);
-      console.log('Datos del usuario:', userData);
+      setUser(userData);
+
+      Alert.alert(
+        'Autenticación rápida',
+        '¿Deseas activar el inicio con huella o Face ID para futuros ingresos?',
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Sí',
+            onPress: async () => {
+              await AsyncStorage.setItem('biometricUser', JSON.stringify(userData));
+              console.log('Biometría activada');
+            }
+          }
+        ]
+      );
+
     } catch (error: any) {
-      if (error.response) {
-        if (error.response.status === 401) {
-          Alert.alert('Error', 'Credenciales incorrectas. Por favor, verifica tu código de empleado y contraseña.');
-        } else if (error.response.status >= 500) {
-          Alert.alert('Error', 'Error del servidor. Por favor, inténtalo de nuevo más tarde.');
-        } else {
-          Alert.alert('Error', `Algo salió mal: ${error.response.status}.`);
-        }
+      if (error.response?.status === 401) {
+        Alert.alert('Error', 'Credenciales incorrectas. Verifica tu código y contraseña.');
+      } else if (error.response?.status >= 500) {
+        Alert.alert('Error', 'Error del servidor. Intenta más tarde.');
       } else if (error.request) {
-        Alert.alert('Error', 'No se pudo conectar al servidor. Por favor, verifica tu conexión a internet.');
+        Alert.alert('Error', 'No se pudo conectar al servidor. Revisa tu conexión.');
       } else {
         Alert.alert('Error', 'Ocurrió un error inesperado al iniciar sesión.');
       }
@@ -78,14 +115,14 @@ export default function Login() {
     <View style={styles.container}>
       <Image
         source={require('../assets/images/LogoAlfayOmega.png')}
-        className="h-[120px] w-[260px] object-contain mx-auto mb-[60px]"
+        style={{ height: 120, width: 260, resizeMode: 'contain', alignSelf: 'center', marginBottom: 60 }}
       />
 
-      <View className="flex gap-6">
+      <View style={{ gap: 24 }}>
         <View>
-          <Text className="font-[Poppins-Medium] tracking-[-0.8px] text-[15px]">Código de Empleado</Text>
+          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Código de Empleado</Text>
           <TextInput
-            className="h-14 bg-gray-100 text-gray-500 leading-3 px-6 rounded-xl font-[Poppins-Medium]"
+            style={{ height: 56, backgroundColor: '#f3f4f6', color: '#6b7280', paddingHorizontal: 24, borderRadius: 24, fontFamily: 'Poppins-Medium' }}
             placeholder="Ingrese su Código"
             value={employeeCode}
             onChangeText={setEmployeeCode}
@@ -95,9 +132,9 @@ export default function Login() {
         </View>
 
         <View>
-          <Text className="font-[Poppins-Medium] tracking-[-0.8px] text-[15px]">Contraseña</Text>
+          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Contraseña</Text>
           <TextInput
-            className="h-14 bg-gray-100 text-gray-500 leading-3 px-6 rounded-xl font-[Poppins-Medium]"
+            style={{ height: 56, backgroundColor: '#f3f4f6', color: '#6b7280', paddingHorizontal: 24, borderRadius: 24, fontFamily: 'Poppins-Medium' }}
             placeholder="Ingrese su Contraseña"
             value={password}
             onChangeText={setPassword}
@@ -109,14 +146,14 @@ export default function Login() {
       </View>
 
       <TouchableOpacity
-        className="mt-4 bg-blue-500 p-4 h-14 rounded-xl flex items-center justify-center"
+        style={{ marginTop: 16, backgroundColor: '#3b82f6', padding: 16, height: 56, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }}
         onPress={handleLogin}
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" size="small" /> // Show spinner
+          <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text className="text-white text-center font-[Poppins-Bold] leading-3">Iniciar Sesión</Text> // Show text
+          <Text style={{ color: 'white', textAlign: 'center', fontFamily: 'Poppins-Bold', lineHeight: 12 }}>Iniciar Sesión</Text>
         )}
       </TouchableOpacity>
     </View>

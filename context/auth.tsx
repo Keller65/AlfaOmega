@@ -1,23 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  employeeCode?: string;
-  fullName?: string;
-  password?: string;
-  token?: string;
+export type User = {
+  employeeCode: string;
+  fullName: string;
+  token: string;
 };
 
 type AuthContextType = {
   user: User | null;
-  host: string | null;
-  port: string | null;
-  login: (userData: User, host: string, port: string) => void;
-  logout: () => void;
-  setHostPort: (host: string, port: string) => void;
+  login: (userData: User) => Promise<void>;
+  logout: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
@@ -25,50 +18,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [host, setHost] = useState<string | null>(null);
-  const [port, setPort] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = async () => {
-      const userData = await AsyncStorage.getItem('user');
-      const savedHost = await AsyncStorage.getItem('host');
-      const savedPort = await AsyncStorage.getItem('port');
-      if (userData) setUser(JSON.parse(userData));
-      if (savedHost) setHost(savedHost);
-      if (savedPort) setPort(savedPort);
+    // Cargar usuario guardado al iniciar app
+    const loadUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      } catch (error) {
+        console.error('Error cargando usuario', error);
+      } finally {
+        setLoading(false);
+      }
     };
-    loadData();
+    loadUser();
   }, []);
 
-  const login = async (userData: User, hostValue: string, portValue: string) => {
+  const login = async (userData: User) => {
     setUser(userData);
-    setHost(hostValue);
-    setPort(portValue);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
-    await AsyncStorage.setItem('host', hostValue);
-    await AsyncStorage.setItem('port', portValue);
-  };
-
-  const setHostPort = async (hostValue: string, portValue: string) => {
-    setHost(hostValue);
-    setPort(portValue);
-    await AsyncStorage.setItem('host', hostValue);
-    await AsyncStorage.setItem('port', portValue);
   };
 
   const logout = async () => {
     setUser(null);
-    setHost(null);
-    setPort(null);
     await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem('host');
-    await AsyncStorage.removeItem('port');
-
-    console.log('Usuario ha cerrado sesión');
+    // await AsyncStorage.removeItem('biometricUser');
+    console.log('Sesión cerrada');
   };
 
+  if (loading) {
+    return null; // O Splash screen
+  }
+
   return (
-    <AuthContext.Provider value={{ user, host, port, login, logout, setHostPort, setUser }}>
+    <AuthContext.Provider value={{ user, login, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -76,8 +62,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
-  }
+  if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider');
   return context;
 };
