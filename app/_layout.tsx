@@ -6,11 +6,26 @@ import { AuthProvider } from '../context/auth';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { TextInput } from 'react-native';
+import { useAppStore } from '@/state/index';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
+
+  const rawSearchText = useAppStore(state => state.rawSearchText);
+  const setRawSearchText = useAppStore(state => state.setRawSearchText);
+  const setDebouncedSearchText = useAppStore(state => state.setDebouncedSearchText);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchText(rawSearchText);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [rawSearchText, setDebouncedSearchText]);
 
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
@@ -42,7 +57,6 @@ export default function RootLayout() {
               headerShown: true,
               headerStyle: { backgroundColor: '#fff' },
               headerShadowVisible: false,
-              headerTitle: "Seleccionar Cliente",
               headerTitleStyle: {
                 fontFamily: "Poppins-SemiBold"
               }
@@ -50,6 +64,7 @@ export default function RootLayout() {
           >
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="client" options={{ headerShown: true, headerTitle: 'Seleccionar Cliente' }} />
 
             <Stack.Screen name="shop"
               options={{
@@ -68,6 +83,9 @@ export default function RootLayout() {
                       fontFamily: 'Poppins-Regular',
                     }}
                     placeholderTextColor="#888"
+                    value={rawSearchText} // Conectado al estado del store
+                    onChangeText={setRawSearchText} // Conectado a la acción del store
+                    clearButtonMode="while-editing" // Permite borrar el texto fácilmente
                   />
                 ),
               }}

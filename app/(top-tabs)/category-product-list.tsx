@@ -1,6 +1,6 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native'; // Importa RefreshControl
+import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
@@ -21,6 +21,7 @@ const CategoryProductScreen = memo(() => {
   const productsInCart = useAppStore(state => state.products);
   const allProductsCache = useAppStore(state => state.allProductsCache);
   const setAllProductsCache = useAppStore(state => state.setAllProductsCache);
+  const debouncedSearchText = useAppStore(state => state.debouncedSearchText);
 
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +30,6 @@ const CategoryProductScreen = memo(() => {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
-  const [rawSearchText, setRawSearchText] = useState<string>('');
-  const [debouncedSearchText, setDebouncedSearchText] = useState<string>('');
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,20 +39,17 @@ const CategoryProductScreen = memo(() => {
     if (index === -1) setSelectedItem(null);
   }, []);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchText(rawSearchText);
-    }, 300);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [rawSearchText]);
-
-  const fetchProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async (forceRefresh = false) => {
     if (!user?.token) {
       setLoading(false);
       setError('No se ha iniciado sesión o el token no está disponible.');
+      return;
+    }
+
+    if (!forceRefresh && allProductsCache.length > 0) {
+      setItems(allProductsCache);
+      setLoading(false);
+      console.log('Productos cargados desde caché.');
       return;
     }
 
@@ -97,6 +93,7 @@ const CategoryProductScreen = memo(() => {
 
       setItems(productosCombinados);
       setAllProductsCache(productosCombinados);
+      console.log('Productos cargados desde la API y guardados en caché.');
     } catch (err: any) {
       console.error('Error al cargar productos con axios:', err);
       if (err.response) {
@@ -111,25 +108,15 @@ const CategoryProductScreen = memo(() => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.token, setAllProductsCache]);
+  }, [user?.token, allProductsCache, setAllProductsCache]);
 
   useEffect(() => {
-    if (!user?.token) return;
+    fetchProducts();
+  }, [fetchProducts]);
 
-    if (allProductsCache.length > 0) {
-      setItems(allProductsCache);
-      setLoading(false);
-      console.log('Productos cargados desde caché.');
-    } else {
-      console.log('Cargando productos desde la API...');
-      fetchProducts();
-    }
-  }, [user?.token, allProductsCache, fetchProducts]);
-
-  // Manejador para pull-to-refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchProducts();
+    fetchProducts(true);
   }, [fetchProducts]);
 
   useEffect(() => {
@@ -248,7 +235,7 @@ const CategoryProductScreen = memo(() => {
 
   if (!user?.token) {
     return (
-      <View className='flex-1 items-center justify-center'>
+      <View style={styles.fullScreenCenter}>
         <Text style={styles.errorText}>No has iniciado sesión o tu sesión ha expirado.</Text>
       </View>
     );
@@ -256,7 +243,7 @@ const CategoryProductScreen = memo(() => {
 
   if (loading && items.length === 0) {
     return (
-      <View className='flex-1 items-center justify-center'>
+      <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
         <Text className='font-[Poppins-Regular]'>Cargando productos...</Text>
       </View>
@@ -265,7 +252,7 @@ const CategoryProductScreen = memo(() => {
 
   if (error && items.length === 0) {
     return (
-      <View className='flex-1 items-center justify-center'>
+      <View style={styles.fullScreenCenter}>
         <Text style={styles.errorText}>{error}</Text>
         <Text style={styles.subText}>Por favor, intenta de nuevo más tarde.</Text>
       </View>
@@ -274,21 +261,10 @@ const CategoryProductScreen = memo(() => {
 
   return (
     <View style={{ flex: 1 }} className="bg-white">
-      {/* Puedes descomentar y usar este TextInput si lo necesitas */}
-      {/* <View className="px-4 py-2 bg-white border-b border-gray-200">
-        <TextInput
-          className="h-12 border border-gray-300 rounded-lg px-4 font-[Poppins-Regular]"
-          placeholder="Buscar productos..."
-          value={rawSearchText}
-          onChangeText={setRawSearchText}
-          clearButtonMode="while-editing"
-        />
-      </View> */}
-
-      {filteredItems.length === 0 && !loading ? ( // Muestra mensaje de "no encontrados" solo si no está cargando
+      {filteredItems.length === 0 && !loading ? (
         <View style={styles.fullScreenCenter}>
           <Text className="text-center text-gray-500 mt-4">
-            No se encontraron productos para {rawSearchText} en esta categoría.
+            No se encontraron productos para {debouncedSearchText} en esta categoría.
           </Text>
         </View>
       ) : (
@@ -303,13 +279,12 @@ const CategoryProductScreen = memo(() => {
           windowSize={21}
           numColumns={2}
           collapsable
-          // NUEVO: Pull-to-refresh
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#007bff" // Color del spinner en iOS
-              colors={['#007bff']} // Colores del spinner en Android
+              tintColor="#007bff"
+              colors={['#007bff']}
             />
           }
         />
@@ -389,7 +364,7 @@ const CategoryProductScreen = memo(() => {
                         marginHorizontal: 16,
                         color: 'black',
                       }}
-                      maxLength={3} // Añadido para evitar números excesivamente largos
+                      maxLength={3}
                     />
                     <TouchableOpacity
                       className="bg-gray-200 rounded-full p-2"

@@ -102,6 +102,7 @@ export default function Login() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            keyboardType="numeric"
             editable={!loading}
           />
         </View>

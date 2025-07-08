@@ -3,49 +3,48 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ProductDiscount } from '@/types/types';
 
-// Define la interfaz para un item del carrito
 type CartItem = ProductDiscount & {
   quantity: number;
   unitPrice: number;
   total: number;
 };
 
-// Define la interfaz para un cliente
 interface Customer {
   cardCode: string;
   cardName: string;
   federalTaxID: string;
 }
 
-// Define la interfaz para el estado combinado de la aplicación
 interface AppStoreState {
-  // Estado del carrito
   products: CartItem[];
   addProduct: (productToAdd: Omit<CartItem, 'total'>) => void;
   updateQuantity: (itemCode: string, quantity: number) => void;
   removeProduct: (itemCode: string) => void;
   clearCart: () => void;
 
-  // Estado del cliente seleccionado
   selectedCustomer: Customer | null;
   setSelectedCustomer: (customer: Customer) => void;
   clearSelectedCustomer: () => void;
 
-  // NUEVO: Caché de todos los productos
   allProductsCache: ProductDiscount[];
   setAllProductsCache: (products: ProductDiscount[]) => void;
-  clearAllProductsCache: () => void; // Opcional: para limpiar la caché si es necesario
+  clearAllProductsCache: () => void;
+
+  rawSearchText: string;
+  debouncedSearchText: string;
+  setRawSearchText: (text: string) => void;
+  setDebouncedSearchText: (text: string) => void;
 }
 
 export const useAppStore = create<AppStoreState>()(
   persist(
     (set, get) => ({
-      // --- Estado inicial ---
       products: [],
       selectedCustomer: null,
-      allProductsCache: [], // Inicializa el caché de productos
+      allProductsCache: [],
+      rawSearchText: '',
+      debouncedSearchText: '',
 
-      // --- Acciones del carrito ---
       addProduct: (productToAdd) => {
         const products = get().products;
         const existingIndex = products.findIndex(p => p.itemCode === productToAdd.itemCode);
@@ -107,16 +106,17 @@ export const useAppStore = create<AppStoreState>()(
 
       clearCart: () => set({ products: [] }),
 
-      // --- Acciones del cliente seleccionado ---
       setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
       clearSelectedCustomer: () => set({ selectedCustomer: null }),
 
-      // NUEVO: Acciones para el caché de productos
       setAllProductsCache: (products) => set({ allProductsCache: products }),
       clearAllProductsCache: () => set({ allProductsCache: [] }),
+
+      setRawSearchText: (text) => set({ rawSearchText: text }),
+      setDebouncedSearchText: (text) => set({ debouncedSearchText: text }),
     }),
     {
-      name: 'app-store', // Un nombre único para el store persistente
+      name: 'app-store',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

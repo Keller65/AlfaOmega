@@ -3,8 +3,8 @@ import { View, Text, ActivityIndicator, TouchableOpacity, Alert, StyleSheet, Fla
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
-import { useAppStore } from '@/state/index';
 import axios from 'axios';
+import { useAppStore } from '@/state/index';
 
 interface Customer {
   cardCode: string;
@@ -41,11 +41,11 @@ const PedidosScreen = memo(() => {
       .catch(err => {
         console.error('Error al cargar clientes:', err);
         setError(err.response?.data?.message || err.message || 'Error desconocido al cargar clientes.');
+        setCustomers([]);
       })
       .finally(() => setLoading(false));
   }, [employeeCode, user?.token]);
 
-  // Manejador para la pulsación de un cliente
   const handleCustomerPress = useCallback(async (customer: Customer) => {
     try {
       setSelectedCustomer(customer);
@@ -66,7 +66,6 @@ const PedidosScreen = memo(() => {
     }
   }, [router, setSelectedCustomer]);
 
-  // Función de renderizado para cada elemento de la lista
   const renderCustomerItem = useCallback(({ item: customer }: { item: Customer }) => (
     <TouchableOpacity
       key={customer.cardCode}
@@ -134,8 +133,8 @@ const PedidosScreen = memo(() => {
         keyExtractor={(item) => item.cardCode}
         contentContainerStyle={styles.listContentContainer}
         initialNumToRender={10} // Número inicial de elementos a renderizar
-        maxToRenderPerBatch={10} // Cuántos elementos renderizar en cada lote adicional
-        windowSize={20} // Cuántos elementos mantener renderizados fuera de la vista
+        maxToRenderPerBatch={5} // Cuántos elementos renderizar en cada lote adicional
+        windowSize={21} // Cuántos elementos mantener renderizados fuera de la vista
       />
     </View>
   );
