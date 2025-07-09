@@ -112,7 +112,7 @@ const PedidosScreen = memo(() => {
     return (
       <View style={styles.fullScreenCenter}>
         <Text style={styles.errorText}>{error}</Text>
-        <Text style={styles.subText}>Por favor, intenta de nuevo más tarde.</Text>
+        <Text style={styles.subText}>Tu sesión ha expirado. Por favor, inicia sesión nuevamente</Text>
       </View>
     );
   }
