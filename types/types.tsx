@@ -19,3 +19,17 @@ export type ProductDiscount = {
   salesUnit: string | null;
   salesItemsPerUnit: number;
 };
+
+export type CreateOrder = {
+  cardCode: string;
+  docDate: Date,
+  docDueDate: Date,
+  lines: [
+    {
+      itemCode: string;
+      quantity: number | string;
+      priceAfterVAT: number | string;
+      warehouseCode: string;
+    }
+  ]
+}
