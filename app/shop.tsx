@@ -10,17 +10,17 @@ import { useRoute } from '@react-navigation/native';
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './(top-tabs)/category-product-list';
 
-interface ProductData {
-  itemCode: string;
-  itemName: string;
-  groupCode: number;
-  groupName: string;
+interface ProductCategory {
+  code: string;
+  name: string;
+  slug: string;
 }
 
-interface ProductCategory {
-  groupCode: number;
-  groupName: string;
-  slug: string;
+interface SelectedClient {
+  cardCode: string;
+  cardName: string;
+  federalTaxID?: string;
+  priceListNum?: string;
 }
 
 export default function TopTabNavigatorLayout() {
@@ -28,30 +28,64 @@ export default function TopTabNavigatorLayout() {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
+
   const route = useRoute();
-  const { cardCode, cardName, federalTaxID } = route.params as {
+  const { cardCode, cardName, federalTaxID, priceListNum } = route.params as {
     cardCode?: string;
     cardName?: string;
     federalTaxID?: string;
+    priceListNum?: string;
   };
 
+  // --- All Hooks must be declared here, unconditionally ---
+
   useEffect(() => {
-    const storeClientData = async () => {
-      if (cardCode && cardName && federalTaxID) {
+    const storeAndLoadClientData = async () => {
+      let currentCardCode = cardCode;
+      let currentCardName = cardName;
+      let currentFederalTaxID = federalTaxID;
+      let currentPriceListNum = priceListNum;
+
+      if (cardCode && cardName && federalTaxID && priceListNum) {
         try {
           await AsyncStorage.setItem(
             'selectedClient',
-            JSON.stringify({ cardCode, cardName, federalTaxID })
+            JSON.stringify({ cardCode, cardName, federalTaxID, priceListNum })
           );
           console.log('Cliente guardado en AsyncStorage', cardName);
+          setClientPriceList(priceListNum);
         } catch (err) {
           console.error('Error al guardar cliente en AsyncStorage:', err);
+        }
+      } else {
+        try {
+          const cachedClientData = await AsyncStorage.getItem('selectedClient');
+          if (cachedClientData) {
+            const parsedClient: SelectedClient = JSON.parse(cachedClientData);
+            currentCardCode = parsedClient.cardCode;
+            currentCardName = parsedClient.cardName;
+            currentFederalTaxID = parsedClient.federalTaxID;
+            currentPriceListNum = parsedClient.priceListNum;
+            setClientPriceList(parsedClient.priceListNum);
+            console.log('Cliente cargado de AsyncStorage', parsedClient.cardName);
+          }
+        } catch (err) {
+          console.error('Error al cargar cliente de AsyncStorage:', err);
+        }
+      }
+
+      if (!clientPriceList && currentCardCode) {
+        if (currentPriceListNum) {
+          setClientPriceList(currentPriceListNum);
+        } else {
+          setClientPriceList('1');
         }
       }
     };
 
-    storeClientData();
-  }, [cardCode, cardName, federalTaxID]);
+    storeAndLoadClientData();
+  }, [cardCode, cardName, federalTaxID, priceListNum, clientPriceList]); // Added clientPriceList to dependency array
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -76,23 +110,22 @@ export default function TopTabNavigatorLayout() {
         return;
       }
 
-      const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/active', { headers });
-      const allProducts = response.data;
+      const response = await axios.get<Array<{ code: string, name: string }>>(
+        'http://200.115.188.54:4325/sap/items/categories',
+        { headers }
+      );
 
-      const uniqueCategories = new Map<number, string>();
-      for (const product of allProducts) {
-        if (product.groupCode && product.groupName) {
-          uniqueCategories.set(product.groupCode, product.groupName);
-        }
-      }
-
-      const formattedCategories: ProductCategory[] = Array.from(uniqueCategories.entries()).map(([code, name]) => ({
-        groupCode: code,
-        groupName: name,
-        slug: slugify(name, { lower: true, strict: true }),
+      const formattedCategories: ProductCategory[] = response.data.map(category => ({
+        code: category.code,
+        name: category.name,
+        slug: slugify(category.name, { lower: true, strict: true }),
       }));
 
-      formattedCategories.unshift({ groupCode: 0, groupName: 'Todas', slug: 'todas' });
+      formattedCategories.unshift({
+        code: '0000',
+        name: 'Todas',
+        slug: 'todas'
+      });
 
       await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
       setCategories(formattedCategories);
@@ -115,22 +148,26 @@ export default function TopTabNavigatorLayout() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // The useMemo for tabScreens also needs to be unconditional
   const tabScreens = useMemo(() => (
     categories.map((category) => (
       <Tab.Screen
-        key={category.groupCode}
+        key={category.code}
         name={category.slug}
         component={CategoryProductScreen}
         options={{
-          title: category.groupName.charAt(0).toUpperCase() + category.groupName.slice(1).toLowerCase(),
+          title: category.name.charAt(0).toUpperCase() + category.name.slice(1).toLowerCase(),
         }}
         initialParams={{
-          groupName: category.groupName,
-          groupCode: category.groupCode.toString(),
+          groupName: category.name,
+          groupCode: category.code,
+          priceList: clientPriceList,
         }}
       />
     ))
-  ), [categories]);
+  ), [categories, clientPriceList]);
+
+  // --- Conditional Renders (Return statements) go AFTER all hooks ---
 
   if (!user?.token) {
     return (
@@ -140,11 +177,11 @@ export default function TopTabNavigatorLayout() {
     );
   }
 
-  if (loading) {
+  if (loading || clientPriceList === undefined) { // Combine loading states
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Cargando categorías...</Text>
+        <Text style={styles.loadingText}>Cargando datos del cliente y categorías...</Text>
       </View>
     );
   }

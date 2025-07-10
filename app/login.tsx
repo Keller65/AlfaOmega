@@ -9,7 +9,7 @@ import { useAuth, User } from "../context/auth";
 
 export default function Login() {
   const { user, setUser } = useAuth();
-  const [employeeCode, setEmployeeCode] = useState("");
+  const [salesPersonCode, setSalesPersonCode] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +25,6 @@ export default function Login() {
     })();
   }, []);
 
-  // Autenticación biométrica automática
   useEffect(() => {
     (async () => {
       if (user) return;
@@ -51,7 +50,6 @@ export default function Login() {
     })();
   }, [user]);
 
-
   const handleLogin = async () => {
     if (loading) return;
     setLoading(true);
@@ -60,9 +58,10 @@ export default function Login() {
       const deviceToken = "";
 
       const response = await axios.post('http://200.115.188.54:4325/auth/employee', {
-        employeeCode: Number(employeeCode),
+        employeeCode: Number(salesPersonCode), // Aquí se usa el mismo valor para ambos campos si es requerido así por el backend
         password: password,
-        token: deviceToken
+        token: deviceToken,
+        salesPersonCode: Number(salesPersonCode)
       }, {
         headers: { 'Content-Type': 'application/json' }
       });
@@ -71,9 +70,11 @@ export default function Login() {
 
       const userData: User = {
         employeeCode: data.salesPersonCode,
+        salesPersonCode: data.salesPersonCode,
         fullName: data.fullName,
         token: data.token
       };
+
 
       await AsyncStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -120,12 +121,12 @@ export default function Login() {
 
       <View style={{ gap: 24 }}>
         <View>
-          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Código de Empleado</Text>
+          <Text style={{ fontFamily: 'Poppins-Medium', letterSpacing: -0.8, fontSize: 15 }}>Código de Vendedor</Text>
           <TextInput
             style={{ height: 56, backgroundColor: '#f3f4f6', color: '#6b7280', paddingHorizontal: 24, borderRadius: 24, fontFamily: 'Poppins-Medium' }}
-            placeholder="Ingrese su Código"
-            value={employeeCode}
-            onChangeText={setEmployeeCode}
+            placeholder="Ingrese su Código de Vendedor"
+            value={salesPersonCode}
+            onChangeText={setSalesPersonCode}
             keyboardType="numeric"
             editable={!loading}
           />

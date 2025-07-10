@@ -18,6 +18,10 @@ const Settings = () => {
     loadData();
   }, []);
 
+  async function ClearData () {
+    await AsyncStorage.clear()
+  }
+
   return (
     <View
       className="mt-2 bg-white flex-1"
@@ -30,6 +34,10 @@ const Settings = () => {
 
       <TouchableOpacity className="w-full p-2" onPress={logout}>
         <Text className="text-red-500 text-center">Cerrar Sesión</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity className="w-full p-2" onPress={ClearData}>
+        <Text className="text-red-500 text-center">Borrar Data</Text>
       </TouchableOpacity>
     </View>
   );

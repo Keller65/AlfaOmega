@@ -5,6 +5,7 @@ export type User = {
   employeeCode: string;
   fullName: string;
   token: string;
+  salesPersonCode: number;
 };
 
 type AuthContextType = {

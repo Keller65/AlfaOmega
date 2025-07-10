@@ -11,10 +11,12 @@ import "../../global.css";
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
 
+const PAGE_SIZE = 20;
+
 const CategoryProductScreen = memo(() => {
   const { user } = useAuth();
   const route = useRoute();
-  const { groupName, groupCode } = route.params as { groupName?: string; groupCode?: string };
+  const { groupName, groupCode, priceListNum } = route.params as { groupName?: string; groupCode?: string, priceListNum?: string | number };
 
   const addProduct = useAppStore(state => state.addProduct);
   const updateQuantity = useAppStore(state => state.updateQuantity);
@@ -32,6 +34,9 @@ const CategoryProductScreen = memo(() => {
   const [total, setTotal] = useState<number>(0);
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const snapPoints = useMemo(() => ['69%', '76%'], []);
 
@@ -39,21 +44,27 @@ const CategoryProductScreen = memo(() => {
     if (index === -1) setSelectedItem(null);
   }, []);
 
-  const fetchProducts = useCallback(async (forceRefresh = false) => {
+  const fetchProducts = useCallback(async (forceRefresh = false, loadMore = false) => {
     if (!user?.token) {
       setLoading(false);
       setError('No se ha iniciado sesión o el token no está disponible.');
       return;
     }
 
-    if (!forceRefresh && allProductsCache.length > 0) {
+    const currentPage = loadMore ? page + 1 : 1;
+
+    if (!forceRefresh && !loadMore && allProductsCache.length > 0) {
       setItems(allProductsCache);
       setLoading(false);
       console.log('Productos cargados desde caché.');
       return;
     }
 
-    setLoading(true);
+    if (loadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -62,40 +73,73 @@ const CategoryProductScreen = memo(() => {
         'Content-Type': 'application/json',
       };
 
-      const [resGeneral, resDescuento] = await Promise.all([
-        axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/Items/Active', { headers }),
-        axios.get<ProductDiscount[]>('http://200.115.188.54:4325/sap/items/discounted', { headers }),
-      ]);
+      let url = `http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}&priceList=1`;
 
-      const dataGeneral = resGeneral.data;
-      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
-
-      const descuentoMap = new Map<string, ProductDiscount>();
-      for (const item of dataDescuento) {
-        descuentoMap.set(item.itemCode, item);
+      if (groupCode && groupCode !== '0000') {
+        url += `&groupCode=${groupCode}`;
       }
 
-      const productosCombinados = dataGeneral.map((producto: ProductDiscount) => {
-        if (descuentoMap.has(producto.itemCode)) {
-          const descuento = descuentoMap.get(producto.itemCode);
+      const response = await axios.get<{
+        page: number;
+        pageSize: number;
+        total: number;
+        items: ProductDiscount[];
+      }>(url, { headers });
+
+      const newItems = response.data.items;
+
+      if (!loadMore) {
+        const resDescuento = await axios.get<ProductDiscount[]>(
+          'http://200.115.188.54:4325/sap/items/discounted',
+          { headers }
+        );
+
+        const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
+        const descuentoMap = new Map<string, ProductDiscount>();
+
+        for (const item of dataDescuento) {
+          descuentoMap.set(item.itemCode, item);
+        }
+
+        const productosCombinados = newItems.map((producto: ProductDiscount) => {
+          if (descuentoMap.has(producto.itemCode)) {
+            const descuento = descuentoMap.get(producto.itemCode);
+            return {
+              ...producto,
+              tiers: descuento?.tiers || [],
+              hasDiscount: true,
+            };
+          }
           return {
             ...producto,
-            tiers: descuento?.tiers || [],
-            hasDiscount: true,
+            hasDiscount: false,
+            tiers: [],
           };
-        }
-        return {
-          ...producto,
-          hasDiscount: false,
-          tiers: [],
-        };
-      });
+        });
 
-      setItems(productosCombinados);
-      setAllProductsCache(productosCombinados);
-      console.log('Productos cargados desde la API y guardados en caché.');
+        if (loadMore) {
+          setItems(prev => [...prev, ...productosCombinados]);
+        } else {
+          setItems(productosCombinados);
+          setAllProductsCache(productosCombinados);
+        }
+      } else {
+        if (loadMore) {
+          setItems(prev => [...prev, ...newItems]);
+        } else {
+          setItems(newItems);
+        }
+      }
+
+      setTotalItems(response.data.total);
+
+      if (loadMore) {
+        setPage(currentPage);
+      }
+
+      console.log('Productos cargados desde la API', loadMore ? '(más items)' : '');
     } catch (err: any) {
-      console.error('Error al cargar productos con axios:', err);
+      console.error('Error al cargar productos:', err);
       if (err.response) {
         setError(`Error del servidor: ${err.response.status} - ${err.response.data?.message || 'Mensaje desconocido'}`);
       } else if (err.request) {
@@ -103,12 +147,18 @@ const CategoryProductScreen = memo(() => {
       } else {
         setError(`Ocurrió un error inesperado: ${err.message}`);
       }
-      setItems([]);
+      if (!loadMore) {
+        setItems([]);
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (loadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [user?.token, allProductsCache, setAllProductsCache]);
+  }, [user?.token, allProductsCache, setAllProductsCache, page, groupCode]);
 
   useEffect(() => {
     fetchProducts();
@@ -118,6 +168,12 @@ const CategoryProductScreen = memo(() => {
     setRefreshing(true);
     fetchProducts(true);
   }, [fetchProducts]);
+
+  const loadMoreItems = useCallback(() => {
+    if (!loadingMore && items.length < totalItems) {
+      fetchProducts(false, true);
+    }
+  }, [loadingMore, items.length, totalItems, fetchProducts]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -189,12 +245,6 @@ const CategoryProductScreen = memo(() => {
   const filteredItems = useMemo(() => {
     let currentItems = Array.isArray(items) ? items : [];
 
-    if (groupName && groupName !== 'Todas') {
-      currentItems = currentItems.filter(item => item.groupName === groupName);
-    } else if (groupCode && groupCode !== '0') {
-      currentItems = currentItems.filter(item => item.groupCode.toString() === groupCode);
-    }
-
     if (debouncedSearchText) {
       const text = debouncedSearchText.toLowerCase();
       currentItems = currentItems.filter((item) => {
@@ -206,7 +256,7 @@ const CategoryProductScreen = memo(() => {
       });
     }
     return currentItems;
-  }, [items, debouncedSearchText, groupName, groupCode]);
+  }, [items, debouncedSearchText]);
 
   const renderProductItem = useCallback(({ item, index }: { item: ProductDiscount; index: number }) => (
     <TouchableOpacity
@@ -232,6 +282,15 @@ const CategoryProductScreen = memo(() => {
       </View>
     </TouchableOpacity>
   ), [handleProductPress]);
+
+  const renderFooter = useCallback(() => {
+    if (!loadingMore) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#007bff" />
+      </View>
+    );
+  }, [loadingMore]);
 
   if (!user?.token) {
     return (
@@ -261,6 +320,8 @@ const CategoryProductScreen = memo(() => {
 
   return (
     <View style={{ flex: 1 }} className="bg-white">
+      <Text>{priceListNum}</Text>
+
       {filteredItems.length === 0 && !loading ? (
         <View style={styles.fullScreenCenter}>
           <Text className="text-center text-gray-500 mt-4">
@@ -287,6 +348,9 @@ const CategoryProductScreen = memo(() => {
               colors={['#007bff']}
             />
           }
+          ListFooterComponent={renderFooter}
+          onEndReached={loadMoreItems}
+          onEndReachedThreshold={0.5}
         />
       )}
 

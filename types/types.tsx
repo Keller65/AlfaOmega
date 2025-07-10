@@ -33,3 +33,17 @@ export type CreateOrder = {
     }
   ]
 }
+
+export interface Customer {
+  cardCode: string;
+  cardName: string;
+  federalTaxID: string;
+  priceListNum: number;
+}
+
+export interface CustomersResponse {
+  items: Customer[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
