@@ -60,7 +60,7 @@ const PedidosScreen = memo(() => {
             priceListNum: customer.priceListNum
           },
         });
-        console.log('Navegación a /shop iniciada.');
+        console.log('Navegación a /shop iniciada a: ', customer.cardName);
       } catch (err) {
         console.error('Error al navegar:', err);
         Alert.alert('Error de navegación', 'No se pudo abrir la pantalla de pedido. Por favor, inténtalo de nuevo.');

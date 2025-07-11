@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import slugify from 'slugify';
 import { useAuth } from '../../context/auth';
+import { useRoute } from '@react-navigation/native'; // Import useRoute
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './category-product-list';
@@ -22,11 +23,58 @@ interface ProductCategory {
   slug: string;
 }
 
+interface SelectedClient { // Define the interface for selected client data from async storage
+  cardCode: string;
+  cardName: string;
+  federalTaxID?: string;
+  priceListNum?: string; // Ensure this is present
+}
+
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true); // Renamed for clarity
   const [error, setError] = useState<string | null>(null);
+  const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined); // State to hold the priceListNum
+  const [loadingClientData, setLoadingClientData] = useState(true); // New state for client data loading
+
+  const route = useRoute(); // Get route object
+  // Destructure priceListNum from route.params, which comes from PedidosScreen
+  const { priceListNum: routePriceListNum } = route.params as { priceListNum?: string };
+
+  // This useEffect will load the priceListNum from route params or AsyncStorage
+  useEffect(() => {
+    const loadClientPriceList = async () => {
+      setLoadingClientData(true);
+      let currentPriceList: string | undefined;
+
+      if (routePriceListNum) {
+        // If priceListNum is directly available from route params (e.g., from PedidosScreen)
+        currentPriceList = routePriceListNum;
+      } else {
+        // Otherwise, try to load from AsyncStorage (e.g., if navigating back or deep linking)
+        try {
+          const cachedClientData = await AsyncStorage.getItem('selectedClient');
+          if (cachedClientData) {
+            const parsedClient: SelectedClient = JSON.parse(cachedClientData);
+            currentPriceList = parsedClient.priceListNum;
+          }
+        } catch (err) {
+          console.error('Error al cargar cliente de AsyncStorage para priceListNum:', err);
+        }
+      }
+
+      // Fallback to a default price list if still not found
+      if (!currentPriceList) {
+        currentPriceList = '1'; // Default price list, adjust as needed
+      }
+      setClientPriceList(currentPriceList);
+      setLoadingClientData(false);
+    };
+
+    loadClientPriceList();
+  }, [routePriceListNum]); // Re-run if the priceListNum from route changes
+
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -35,31 +83,32 @@ export default function TopTabNavigatorLayout() {
 
   const fetchCategories = useCallback(async () => {
     if (!user?.token) {
-      setLoading(false);
+      setLoadingCategories(false);
       setError('No se ha iniciado sesión o el token no está disponible.');
       return;
     }
 
-    setLoading(true);
+    setLoadingCategories(true);
     setError(null);
 
     try {
       const cached = await AsyncStorage.getItem('cachedCategories');
       if (cached) {
         setCategories(JSON.parse(cached));
-        setLoading(false);
+        setLoadingCategories(false);
         return;
       }
 
-      const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/active', { headers });
-      const allProducts = response.data;
+      // Fetch categories from the API
+      const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/categories', { headers }); // Assuming this endpoint gives categories directly or items to extract categories from
 
       const uniqueCategories = new Map<number, string>();
-      for (const product of allProducts) {
-        if (product.groupCode && product.groupName) {
-          uniqueCategories.set(product.groupCode, product.groupName);
-        }
-      }
+       // If the API gives categories directly, you might not need to loop through allProducts.
+       // Assuming `response.data` is an array of { code: string, name: string } as in previous examples:
+      response.data.forEach((cat: any) => { // Adjust 'any' to specific category type if available
+         uniqueCategories.set(cat.code, cat.name);
+      });
+
 
       const formattedCategories: ProductCategory[] = Array.from(uniqueCategories.entries()).map(([code, name]) => ({
         groupCode: code,
@@ -82,13 +131,17 @@ export default function TopTabNavigatorLayout() {
         setError(`Ocurrió un error inesperado: ${err.message}`);
       }
     } finally {
-      setLoading(false);
+      setLoadingCategories(false);
     }
   }, [headers, user?.token]);
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  // Combine loading states for the main loading indicator
+  const isLoading = loadingClientData || loadingCategories || clientPriceList === undefined;
+
 
   const tabScreens = useMemo(() => (
     categories.map((category) => (
@@ -102,10 +155,11 @@ export default function TopTabNavigatorLayout() {
         initialParams={{
           groupName: category.groupName,
           groupCode: category.groupCode.toString(),
+          priceListNum: clientPriceList, // Pass the determined priceListNum here
         }}
       />
     ))
-  ), [categories]);
+  ), [categories, clientPriceList]); // Add clientPriceList to dependencies
 
   if (!user?.token) {
     return (
@@ -115,11 +169,11 @@ export default function TopTabNavigatorLayout() {
     );
   }
 
-  if (loading) {
+  if (isLoading) { // Use the combined loading state
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Cargando categorías...</Text>
+        <Text style={styles.loadingText}>Cargando datos del cliente y categorías...</Text>
       </View>
     );
   }

@@ -1,13 +1,11 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Text, TouchableOpacity, View, TextInput, Alert, StyleSheet, Image, RefreshControl } from 'react-native';
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View, TextInput, Alert, Image, RefreshControl } from 'react-native';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
 import { useAppStore } from '@/state/index';
 import axios from 'axios';
-import "../../global.css";
-
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
 
@@ -16,7 +14,7 @@ const PAGE_SIZE = 20;
 const CategoryProductScreen = memo(() => {
   const { user } = useAuth();
   const route = useRoute();
-  const { groupName, groupCode, priceListNum } = route.params as { groupName?: string; groupCode?: string, priceListNum?: string | number };
+  const { groupCode } = route.params as { groupCode?: string };
 
   const addProduct = useAppStore(state => state.addProduct);
   const updateQuantity = useAppStore(state => state.updateQuantity);
@@ -44,360 +42,204 @@ const CategoryProductScreen = memo(() => {
     if (index === -1) setSelectedItem(null);
   }, []);
 
-  const fetchProducts = useCallback(async (forceRefresh = false, loadMore = false) => {
-    if (!user?.token) {
-      setLoading(false);
-      setError('No se ha iniciado sesión o el token no está disponible.');
-      return;
-    }
-
-    const currentPage = loadMore ? page + 1 : 1;
-
-    if (!forceRefresh && !loadMore && allProductsCache.length > 0) {
-      setItems(allProductsCache);
-      setLoading(false);
-      console.log('Productos cargados desde caché.');
-      return;
-    }
-
-    if (loadMore) {
-      setLoadingMore(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-
+  const fetchAllProducts = useCallback(async () => {
+    if (!user?.token) return;
     try {
+      setLoading(true);
       const headers = {
         Authorization: `Bearer ${user.token}`,
         'Content-Type': 'application/json',
       };
-
-      let url = `http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}&priceList=1`;
-
-      if (groupCode && groupCode !== '0000') {
-        url += `&groupCode=${groupCode}`;
+      const allItems: ProductDiscount[] = [];
+      let currentPage = 1;
+      let totalFetched = 0;
+      while (true) {
+        const res = await axios.get(`http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}&groupCode=${groupCode}`, { headers });
+        const data = res.data.items;
+        if (data.length === 0) break;
+        allItems.push(...data);
+        totalFetched += data.length;
+        if (totalFetched >= res.data.total) break;
+        currentPage++;
       }
-
-      const response = await axios.get<{
-        page: number;
-        pageSize: number;
-        total: number;
-        items: ProductDiscount[];
-      }>(url, { headers });
-
-      const newItems = response.data.items;
-
-      if (!loadMore) {
-        const resDescuento = await axios.get<ProductDiscount[]>(
-          'http://200.115.188.54:4325/sap/items/discounted',
-          { headers }
-        );
-
-        const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
-        const descuentoMap = new Map<string, ProductDiscount>();
-
-        for (const item of dataDescuento) {
-          descuentoMap.set(item.itemCode, item);
-        }
-
-        const productosCombinados = newItems.map((producto: ProductDiscount) => {
-          if (descuentoMap.has(producto.itemCode)) {
-            const descuento = descuentoMap.get(producto.itemCode);
-            return {
-              ...producto,
-              tiers: descuento?.tiers || [],
-              hasDiscount: true,
-            };
-          }
-          return {
-            ...producto,
-            hasDiscount: false,
-            tiers: [],
-          };
-        });
-
-        if (loadMore) {
-          setItems(prev => [...prev, ...productosCombinados]);
-        } else {
-          setItems(productosCombinados);
-          setAllProductsCache(productosCombinados);
-        }
-      } else {
-        if (loadMore) {
-          setItems(prev => [...prev, ...newItems]);
-        } else {
-          setItems(newItems);
-        }
-      }
-
-      setTotalItems(response.data.total);
-
-      if (loadMore) {
-        setPage(currentPage);
-      }
-
-      console.log('Productos cargados desde la API', loadMore ? '(más items)' : '');
-    } catch (err: any) {
-      console.error('Error al cargar productos:', err);
-      if (err.response) {
-        setError(`Error del servidor: ${err.response.status} - ${err.response.data?.message || 'Mensaje desconocido'}`);
-      } else if (err.request) {
-        setError('No se pudo conectar al servidor. Verifica tu conexión.');
-      } else {
-        setError(`Ocurrió un error inesperado: ${err.message}`);
-      }
-      if (!loadMore) {
-        setItems([]);
-      }
+      const resDescuento = await axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers });
+      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
+      const descuentoMap = new Map(dataDescuento.map((d: ProductDiscount) => [d.itemCode, d]));
+      const productosCombinados = allItems.map((producto: ProductDiscount) => {
+        const descuento = descuentoMap.get(producto.itemCode);
+        return {
+          ...producto,
+          tiers: descuento?.tiers || [],
+          hasDiscount: !!descuento,
+        };
+      });
+      setItems(productosCombinados);
+      setAllProductsCache(productosCombinados);
+      setTotalItems(productosCombinados.length);
+    } catch (err) {
+      setError('Error al cargar productos.');
     } finally {
-      if (loadMore) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-        setRefreshing(false);
-      }
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [user?.token, allProductsCache, setAllProductsCache, page, groupCode]);
+  }, [user?.token, groupCode]);
+
+  const fetchProducts = useCallback(async () => {
+    if (!user?.token) return;
+    try {
+      setLoading(true);
+      const headers = {
+        Authorization: `Bearer ${user.token}`,
+        'Content-Type': 'application/json',
+      };
+      const res = await axios.get(`http://200.115.188.54:4325/sap/items/active?page=1&pageSize=${PAGE_SIZE}&groupCode=${groupCode}`, { headers });
+      const newItems = res.data.items;
+      const resDescuento = await axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers });
+      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
+      const descuentoMap = new Map(dataDescuento.map((d: ProductDiscount) => [d.itemCode, d]));
+      const productosCombinados = newItems.map((producto: ProductDiscount) => {
+        const descuento = descuentoMap.get(producto.itemCode);
+        return {
+          ...producto,
+          tiers: descuento?.tiers || [],
+          hasDiscount: !!descuento,
+        };
+      });
+      setItems(productosCombinados);
+      setAllProductsCache(productosCombinados);
+      setTotalItems(res.data.total);
+    } catch (err) {
+      setError('Error al cargar productos.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.token, groupCode]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchProducts(true);
-  }, [fetchProducts]);
-
-  const loadMoreItems = useCallback(() => {
-    if (!loadingMore && items.length < totalItems) {
-      fetchProducts(false, true);
+    if (debouncedSearchText) {
+      fetchAllProducts();
+    } else {
+      fetchProducts();
     }
-  }, [loadingMore, items.length, totalItems, fetchProducts]);
+  }, [groupCode, debouncedSearchText]);
 
   useEffect(() => {
-    if (!selectedItem) {
-      setUnitPrice(0);
-      setTotal(0);
-      return;
-    }
-
+    if (!selectedItem) return setTotal(0);
     let newUnitPrice = selectedItem.price;
-    if (selectedItem.tiers && selectedItem.tiers.length > 0) {
-      const applicableTier = selectedItem.tiers
-        .filter((tier: any) => quantity >= tier.qty)
-        .sort((a: any, b: any) => b.qty - a.qty)[0];
-      if (applicableTier) {
-        newUnitPrice = applicableTier.price;
-      }
-    }
+    const applicable = selectedItem.tiers?.filter(t => quantity >= t.qty).sort((a, b) => b.qty - a.qty)[0];
+    if (applicable) newUnitPrice = applicable.price;
     setUnitPrice(newUnitPrice);
     setTotal(newUnitPrice * quantity);
   }, [selectedItem, quantity]);
 
-  const handleProductPress = useCallback((item: ProductDiscount) => {
+  const onRefresh = () => {
+    setRefreshing(true);
+    if (debouncedSearchText) {
+      fetchAllProducts();
+    } else {
+      fetchProducts();
+    }
+  };
+
+  const handleProductPress = (item: ProductDiscount) => {
     setSelectedItem(item);
     setQuantity(1);
     bottomSheetModalRef.current?.present();
-  }, []);
+  };
 
-  const handleAddToCart = useCallback(() => {
-    if (!selectedItem) {
-      Alert.alert('Error', 'No hay producto seleccionado.');
-      return;
-    }
-    if (quantity <= 0) {
-      Alert.alert('Cantidad inválida', 'La cantidad debe ser mayor a cero.');
-      return;
-    }
-
+  const handleAddToCart = () => {
+    if (!selectedItem || quantity <= 0) return;
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
-
-    const productDataForCart = {
-      ...selectedItem,
-      quantity: quantity,
-      unitPrice: unitPrice,
-    };
-
+    const productData = { ...selectedItem, quantity, unitPrice };
     if (itemInCart) {
       Alert.alert(
         'Producto ya en carrito',
-        `"${selectedItem.itemName}" ya está en tu carrito. ¿Deseas actualizar la cantidad?`,
+        `${selectedItem.itemName} ya está en tu carrito. ¿Actualizar cantidad?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Actualizar',
             onPress: () => {
               updateQuantity(selectedItem.itemCode, quantity);
-              Alert.alert('Actualizado', `Cantidad de "${selectedItem.itemName}" actualizada en el carrito.`);
               bottomSheetModalRef.current?.dismiss();
             },
           },
         ]
       );
     } else {
-      addProduct(productDataForCart);
-      Alert.alert('Agregado', `"${selectedItem.itemName}" agregado al carrito.`);
+      addProduct(productData);
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [selectedItem, quantity, unitPrice, addProduct, updateQuantity, productsInCart]);
+  };
 
   const filteredItems = useMemo(() => {
-    let currentItems = Array.isArray(items) ? items : [];
-
-    if (debouncedSearchText) {
-      const text = debouncedSearchText.toLowerCase();
-      currentItems = currentItems.filter((item) => {
-        return (
-          item.itemCode?.toLowerCase().includes(text) ||
-          item.itemName?.toLowerCase().includes(text) ||
-          item.groupName?.toLowerCase().includes(text)
-        );
-      });
-    }
-    return currentItems;
+    const text = debouncedSearchText?.toLowerCase() || '';
+    return items.filter(item =>
+      item.itemCode?.toLowerCase().includes(text) ||
+      item.itemName?.toLowerCase().includes(text) ||
+      item.groupName?.toLowerCase().includes(text)
+    );
   }, [items, debouncedSearchText]);
 
-  const renderProductItem = useCallback(({ item, index }: { item: ProductDiscount; index: number }) => (
-    <TouchableOpacity
-      key={item.itemCode || index}
-      onPress={() => handleProductPress(item)}
-      activeOpacity={0.7}
-      className="mb-4 bg-white overflow-hidden w-[190px]"
-    >
-      <View className='flex gap-3 p-2'>
-        <View className='flex-1 overflow-hidden rounded-2xl bg-gray-100 flex items-center justify-center h-[180px]'>
-          <Image
-            source={{ uri: "https://res.cloudinary.com/dorcubmfk/image/upload/v1751675261/bote_de_chile_tabasco_1_galon_qaly7a.png" }}
-            style={{ width: 150, height: 150 }}
-            resizeMode="contain"
-          />
+  const renderProductItem = ({ item }: { item: ProductDiscount }) => (
+    <TouchableOpacity onPress={() => handleProductPress(item)} className="mb-4 bg-white w-[190px]">
+      <View className="gap-3 p-2">
+        <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px]">
+          <Image source={{ uri: 'https://via.placeholder.com/150' }} className="w-[150px] h-[150px]" resizeMode="contain" />
         </View>
-
-        <View className='justify-center'>
-          <Text className='font-[Poppins-Medium] text-sm text-black tracking-[-0.3px]'>L. {item.price}</Text>
-          <Text className='font-[Poppins-Medium] text-sm leading-4 tracking-[-0.3px]'>{item.itemName.toLocaleLowerCase()}</Text>
-          <Text className='font-[Poppins-Medium] text-[10px] text-gray-400 tracking-[-0.3px]'>COD: {item.itemCode}</Text>
+        <View>
+          <Text className="font-medium text-sm text-black">L. {item.price}</Text>
+          <Text className="font-medium text-sm leading-4">{item.itemName.toLowerCase()}</Text>
+          <Text className="text-[10px] text-gray-400">COD: {item.itemCode}</Text>
         </View>
       </View>
     </TouchableOpacity>
-  ), [handleProductPress]);
+  );
 
-  const renderFooter = useCallback(() => {
-    if (!loadingMore) return null;
-    return (
-      <View style={{ paddingVertical: 20 }}>
-        <ActivityIndicator size="small" color="#007bff" />
-      </View>
-    );
-  }, [loadingMore]);
-
-  if (!user?.token) {
-    return (
-      <View style={styles.fullScreenCenter}>
-        <Text style={styles.errorText}>No has iniciado sesión o tu sesión ha expirado.</Text>
-      </View>
-    );
-  }
-
-  if (loading && items.length === 0) {
-    return (
-      <View style={styles.fullScreenCenter}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text className='font-[Poppins-Regular]'>Cargando productos...</Text>
-      </View>
-    );
-  }
-
-  if (error && items.length === 0) {
-    return (
-      <View style={styles.fullScreenCenter}>
-        <Text style={styles.errorText}>{error}</Text>
-        <Text style={styles.subText}>Por favor, intenta de nuevo más tarde.</Text>
-      </View>
-    );
-  }
+  if (!user?.token) return <View className="flex-1 justify-center items-center bg-white px-5"><Text className="text-red-500">No has iniciado sesión.</Text></View>;
+  if (loading && items.length === 0) return <View className="flex-1 justify-center items-center bg-white"><ActivityIndicator size="large" color="#007bff" /><Text>Cargando productos...</Text></View>;
+  if (error && items.length === 0) return <View className="flex-1 justify-center items-center bg-white px-4"><Text className="text-red-500">{error}</Text></View>;
 
   return (
-    <View style={{ flex: 1 }} className="bg-white">
-      <Text>{priceListNum}</Text>
-
-      {filteredItems.length === 0 && !loading ? (
-        <View style={styles.fullScreenCenter}>
-          <Text className="text-center text-gray-500 mt-4">
-            No se encontraron productos para {debouncedSearchText} en esta categoría.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredItems}
-          renderItem={renderProductItem}
-          keyExtractor={(item) => item.itemCode}
-          contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          initialNumToRender={10}
-          maxToRenderPerBatch={5}
-          windowSize={21}
-          numColumns={2}
-          collapsable
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#007bff"
-              colors={['#007bff']}
-            />
-          }
-          ListFooterComponent={renderFooter}
-          onEndReached={loadMoreItems}
-          onEndReachedThreshold={0.5}
-        />
-      )}
+    <View className="flex-1 bg-white">
+      <FlatList
+        data={filteredItems}
+        renderItem={renderProductItem}
+        keyExtractor={(item) => item.itemCode}
+        numColumns={2}
+        className='flex-1'
+        contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
+        columnWrapperStyle={{ justifyContent: 'space-between' }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      />
 
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
         snapPoints={snapPoints}
         backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            appearsOnIndex={0}
-            disappearsOnIndex={-1}
-            opacity={0.5}
-            pressBehavior="close"
-          />
+          <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} pressBehavior="close" />
         )}
       >
-        <BottomSheetView
-          style={{
-            flex: 1,
-            minHeight: Dimensions.get('window').height * 0.67,
-            alignItems: 'center',
-          }}
-        >
-          {selectedItem ? (
-            <View className="w-full px-4 gap-y-8">
+        <BottomSheetView className="flex-1 items-center">
+          {selectedItem && (
+            <View className="w-full px-4 space-y-6">
               <View>
-                <View className='w-full h-[200px] flex items-center justify-center bg-gray-200 rounded-xl mb-4'>
-                  <Image
-                    source={{ uri: "https://res.cloudinary.com/dorcubmfk/image/upload/v1751675261/bote_de_chile_tabasco_1_galon_qaly7a.png" }}
-                    style={{ width: 200, height: 200 }}
-                    resizeMode="contain"
-                  />
+                <View className="w-full h-[200px] items-center justify-center bg-gray-200 rounded-xl mb-4">
+                  <Image source={{ uri: 'https://via.placeholder.com/200' }} className="w-[200px] h-[200px]" resizeMode="contain" />
                 </View>
-
-                <Text className="text-xl mb-2 font-[Poppins-SemiBold] tracking-[-0.4px] leading-5">{selectedItem.itemName}</Text>
-                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>UPC: {selectedItem.itemCode}</Text>
-                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Stock: {selectedItem.inStock}</Text>
-                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Committed: {selectedItem.committed}</Text>
-                <Text className='font-[Poppins-Regular] tracking-[-0.4px] leading-5'>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
-
-                {(selectedItem.tiers && selectedItem.tiers.length > 0) && (
+                <Text className="text-xl font-semibold mb-1">{selectedItem.itemName}</Text>
+                <Text>UPC: {selectedItem.itemCode}</Text>
+                <Text>Stock: {selectedItem.inStock}</Text>
+                <Text>Committed: {selectedItem.committed}</Text>
+                <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+                {selectedItem.tiers?.length > 0 && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                    <Text className="font-[Poppins-SemiBold] tracking-[-0.4px] leading-5 mb-1">Precios por cantidad:</Text>
+                    <Text className="font-semibold mb-1">Precios por cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <Text key={index} className="text-sm text-gray-700 font-[Poppins-Regular] tracking-[-0.4px] leading-5">
-                        {`Desde ${tier.qty} unidades: L. ${tier.price.toFixed(2)} (${tier.percent}% desc)`}
+                      <Text key={index} className="text-sm text-gray-700">
+                        Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
                       </Text>
                     ))}
                   </View>
@@ -405,58 +247,32 @@ const CategoryProductScreen = memo(() => {
               </View>
 
               <View>
-                <View className='flex-row items-center justify-between w-full'>
-                  <View className="flex-row items-center mt-4 mb-2">
-                    <TouchableOpacity
-                      className="bg-gray-200 rounded-full p-2"
-                      onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                      disabled={quantity <= 1}
-                    >
+                <View className="flex-row justify-between items-center">
+                  <View className="flex-row items-center">
+                    <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
                       <MinusIcon size={20} />
                     </TouchableOpacity>
                     <TextInput
                       value={quantity.toString()}
-                      onChangeText={(text) => {
-                        const num = parseInt(text.replace(/[^0-9]/g, ''), 10);
-                        setQuantity(!isNaN(num) ? Math.max(1, num) : 1);
-                      }}
+                      onChangeText={(text) => setQuantity(Math.max(1, parseInt(text.replace(/[^0-9]/g, '')) || 1))}
                       keyboardType="numeric"
-                      style={{
-                        width: 48,
-                        textAlign: 'center',
-                        fontSize: 18,
-                        marginHorizontal: 16,
-                        color: 'black',
-                      }}
-                      maxLength={3}
+                      className="mx-4 text-center text-lg text-black w-12"
                     />
-                    <TouchableOpacity
-                      className="bg-gray-200 rounded-full p-2"
-                      onPress={() => setQuantity((q) => q + 1)}
-                    >
+                    <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => q + 1)}>
                       <PlusIcon size={20} />
                     </TouchableOpacity>
                   </View>
-
-                  <View className="mt-2 mb-2 w-[126px]">
-                    <Text className="text-base text-gray-500 font-[Poppins-Regular] leading-4">Total</Text>
-                    <Text className="text-2xl font-[Poppins-Bold] leading-6">L.{total.toFixed(2)}</Text>
+                  <View className="w-[126px]">
+                    <Text className="text-base text-gray-500">Total</Text>
+                    <Text className="text-2xl font-bold">L.{total.toFixed(2)}</Text>
                   </View>
                 </View>
-
-                <TouchableOpacity
-                  className="mt-2 bg-blue-600 rounded-lg py-3 items-center"
-                  onPress={handleAddToCart}
-                  disabled={quantity <= 0}
-                >
-                  <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
+                <TouchableOpacity className="mt-4 bg-blue-600 rounded-lg py-3 items-center" onPress={handleAddToCart}>
+                  <Text className="text-white font-bold">Agregar al carrito</Text>
                 </TouchableOpacity>
-
-                {unitPrice && <Text className="text-[12px] tracking-[-0.4px] text-gray-500 font-[Poppins-Regular] mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>}
+                <Text className="text-xs text-gray-500 mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>
               </View>
             </View>
-          ) : (
-            <Text className="text-lg font-semibold">Selecciona un producto</Text>
           )}
         </BottomSheetView>
       </BottomSheetModal>
@@ -465,34 +281,3 @@ const CategoryProductScreen = memo(() => {
 });
 
 export default CategoryProductScreen;
-
-const styles = StyleSheet.create({
-  fullScreenCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#333',
-  },
-  errorText: {
-    fontSize: 16,
-    color: 'red',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  subText: {
-    fontSize: 14,
-    color: 'gray',
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: 'gray',
-    textAlign: 'center',
-  },
-});
