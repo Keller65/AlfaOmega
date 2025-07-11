@@ -11,18 +11,56 @@ import PlusIcon from '../../assets/icons/PlusIcon';
 
 const PAGE_SIZE = 20;
 
+const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (item: ProductDiscount) => void }) => {
+  const itemInCart = useAppStore(state =>
+    state.products.find(p => p.itemCode === item.itemCode)
+  );
+
+  return (
+    <TouchableOpacity
+      onPress={() => onPress(item)}
+      className="mb-4 bg-white w-[190px] relative"
+    >
+      {itemInCart && (
+        <View className="absolute top-1 right-1 bg-blue-500 rounded-full w-6 h-6 items-center justify-center z-10">
+          <Text className="text-white text-xs font-bold">{itemInCart.quantity}</Text>
+        </View>
+      )}
+      <View className="gap-3 p-2">
+        <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px]">
+          <Image
+            source={{ uri: 'https://via.placeholder.com/150' }}
+            className="w-[150px] h-[150px]"
+            resizeMode="contain"
+          />
+        </View>
+        <View>
+          <Text className="font-medium text-sm text-black">L. {item.price.toFixed(2)}</Text>
+          <Text
+            className="font-medium text-sm leading-4"
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {item.itemName.toLowerCase()}
+          </Text>
+          <Text className="text-[10px] text-gray-400">COD: {item.itemCode}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 const CategoryProductScreen = memo(() => {
   const { user } = useAuth();
   const route = useRoute();
-  const { groupCode } = route.params as { groupCode?: string };
+  const { groupCode, priceListNum } = route.params as { groupCode?: string, priceListNum?: string };
 
   const addProduct = useAppStore(state => state.addProduct);
   const updateQuantity = useAppStore(state => state.updateQuantity);
   const productsInCart = useAppStore(state => state.products);
-  const allProductsCache = useAppStore(state => state.allProductsCache);
-  const setAllProductsCache = useAppStore(state => state.setAllProductsCache);
   const debouncedSearchText = useAppStore(state => state.debouncedSearchText);
 
+  const [pagesCache, setPagesCache] = useState<Map<number, ProductDiscount[]>>(new Map());
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,61 +80,47 @@ const CategoryProductScreen = memo(() => {
     if (index === -1) setSelectedItem(null);
   }, []);
 
-  const fetchAllProducts = useCallback(async () => {
-    if (!user?.token) return;
-    try {
-      setLoading(true);
-      const headers = {
-        Authorization: `Bearer ${user.token}`,
-        'Content-Type': 'application/json',
-      };
-      const allItems: ProductDiscount[] = [];
-      let currentPage = 1;
-      let totalFetched = 0;
-      while (true) {
-        const res = await axios.get(`http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}&groupCode=${groupCode}`, { headers });
-        const data = res.data.items;
-        if (data.length === 0) break;
-        allItems.push(...data);
-        totalFetched += data.length;
-        if (totalFetched >= res.data.total) break;
-        currentPage++;
-      }
-      const resDescuento = await axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers });
-      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
-      const descuentoMap = new Map(dataDescuento.map((d: ProductDiscount) => [d.itemCode, d]));
-      const productosCombinados = allItems.map((producto: ProductDiscount) => {
-        const descuento = descuentoMap.get(producto.itemCode);
-        return {
-          ...producto,
-          tiers: descuento?.tiers || [],
-          hasDiscount: !!descuento,
-        };
-      });
-      setItems(productosCombinados);
-      setAllProductsCache(productosCombinados);
-      setTotalItems(productosCombinados.length);
-    } catch (err) {
-      setError('Error al cargar productos.');
-    } finally {
+  const fetchProducts = useCallback(async ({ forceRefresh = false, loadMore = false } = {}) => {
+    if (!user?.token) {
       setLoading(false);
-      setRefreshing(false);
+      setError('No se ha iniciado sesión o el token no está disponible.');
+      return;
     }
-  }, [user?.token, groupCode]);
 
-  const fetchProducts = useCallback(async () => {
-    if (!user?.token) return;
+    const currentPage = loadMore ? page + 1 : 1;
+
+    // Solo usar caché si no es un refresh forzado y no estamos cargando más
+    if (!forceRefresh && !loadMore && pagesCache.has(currentPage)) {
+      setItems(Array.from(pagesCache.values()).flat());
+      setLoading(false);
+      return;
+    }
+
+    loadMore ? setLoadingMore(true) : setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
       const headers = {
         Authorization: `Bearer ${user.token}`,
         'Content-Type': 'application/json',
       };
-      const res = await axios.get(`http://200.115.188.54:4325/sap/items/active?page=1&pageSize=${PAGE_SIZE}&groupCode=${groupCode}`, { headers });
-      const newItems = res.data.items;
-      const resDescuento = await axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers });
-      const dataDescuento = Array.isArray(resDescuento.data) ? resDescuento.data : [];
+
+      // Construir URL considerando cuando groupCode está vacío (categoría "Todas")
+      let url = `http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+      if (groupCode) {
+        url += `&groupCode=${groupCode}`;
+      }
+
+      // Hacer las peticiones en paralelo
+      const [itemsResponse, discountsResponse] = await Promise.all([
+        axios.get(url, { headers }),
+        axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers })
+      ]);
+
+      const newItems = itemsResponse.data.items;
+      const dataDescuento = Array.isArray(discountsResponse.data) ? discountsResponse.data : [];
       const descuentoMap = new Map(dataDescuento.map((d: ProductDiscount) => [d.itemCode, d]));
+
       const productosCombinados = newItems.map((producto: ProductDiscount) => {
         const descuento = descuentoMap.get(producto.itemCode);
         return {
@@ -105,24 +129,44 @@ const CategoryProductScreen = memo(() => {
           hasDiscount: !!descuento,
         };
       });
-      setItems(productosCombinados);
-      setAllProductsCache(productosCombinados);
-      setTotalItems(res.data.total);
-    } catch (err) {
-      setError('Error al cargar productos.');
+
+      // Actualizar caché y estado
+      const newCache = forceRefresh ? new Map() : new Map(pagesCache);
+      newCache.set(currentPage, productosCombinados);
+      setPagesCache(newCache);
+
+      // Para la carga inicial o refresh, reemplazar todos los items
+      // Para carga incremental, concatenar con los existentes
+      setItems(prevItems =>
+        loadMore ? [...prevItems, ...productosCombinados] : Array.from(newCache.values()).flat()
+      );
+
+      if (!loadMore) {
+        setPage(1);
+      } else {
+        setPage(currentPage);
+      }
+      setTotalItems(itemsResponse.data.total);
+
+    } catch (err: any) {
+      setError(err?.message || 'Error inesperado');
+      if (!loadMore) setItems([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [user?.token, groupCode]);
+  }, [user?.token, groupCode, page, pagesCache]);
 
   useEffect(() => {
-    if (debouncedSearchText) {
-      fetchAllProducts();
-    } else {
-      fetchProducts();
-    }
-  }, [groupCode, debouncedSearchText]);
+    // Resetear el estado cuando cambia la categoría
+    setPagesCache(new Map());
+    setItems([]);
+    setPage(1);
+    setLoading(true);
+
+    fetchProducts();
+  }, [groupCode]);
 
   useEffect(() => {
     if (!selectedItem) return setTotal(0);
@@ -135,10 +179,14 @@ const CategoryProductScreen = memo(() => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    if (debouncedSearchText) {
-      fetchAllProducts();
-    } else {
-      fetchProducts();
+    setPagesCache(new Map());
+    setPage(1);
+    fetchProducts({ forceRefresh: true });
+  };
+
+  const loadMoreItems = () => {
+    if (!loadingMore && items.length < totalItems) {
+      fetchProducts({ loadMore: true });
     }
   };
 
@@ -152,6 +200,7 @@ const CategoryProductScreen = memo(() => {
     if (!selectedItem || quantity <= 0) return;
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
     const productData = { ...selectedItem, quantity, unitPrice };
+
     if (itemInCart) {
       Alert.alert(
         'Producto ya en carrito',
@@ -182,36 +231,77 @@ const CategoryProductScreen = memo(() => {
     );
   }, [items, debouncedSearchText]);
 
-  const renderProductItem = ({ item }: { item: ProductDiscount }) => (
-    <TouchableOpacity onPress={() => handleProductPress(item)} className="mb-4 bg-white w-[190px]">
-      <View className="gap-3 p-2">
-        <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px]">
-          <Image source={{ uri: 'https://via.placeholder.com/150' }} className="w-[150px] h-[150px]" resizeMode="contain" />
-        </View>
-        <View>
-          <Text className="font-medium text-sm text-black">L. {item.price}</Text>
-          <Text className="font-medium text-sm leading-4">{item.itemName.toLowerCase()}</Text>
-          <Text className="text-[10px] text-gray-400">COD: {item.itemCode}</Text>
-        </View>
+  if (loading && !loadingMore) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text className="mt-4 text-gray-600">Cargando productos...</Text>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  }
 
-  if (!user?.token) return <View className="flex-1 justify-center items-center bg-white px-5"><Text className="text-red-500">No has iniciado sesión.</Text></View>;
-  if (loading && items.length === 0) return <View className="flex-1 justify-center items-center bg-white"><ActivityIndicator size="large" color="#007bff" /><Text>Cargando productos...</Text></View>;
-  if (error && items.length === 0) return <View className="flex-1 justify-center items-center bg-white px-4"><Text className="text-red-500">{error}</Text></View>;
+  if (error && !loading) {
+    return (
+      <View className="flex-1 items-center justify-center p-4">
+        <Text className="text-red-500 text-center mb-4">{error}</Text>
+        <TouchableOpacity
+          className="bg-blue-500 px-4 py-2 rounded-lg"
+          onPress={onRefresh}
+        >
+          <Text className="text-white">Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-white">
       <FlatList
         data={filteredItems}
-        renderItem={renderProductItem}
+        renderItem={({ item }) => (
+          <ProductItem
+            item={item}
+            onPress={handleProductPress}
+          />
+        )}
         keyExtractor={(item) => item.itemCode}
         numColumns={2}
-        className='flex-1'
-        contentContainerStyle={{ paddingHorizontal: 8, paddingTop: 8 }}
+        className="flex-1"
+        contentContainerStyle={{
+          paddingHorizontal: 8,
+          paddingTop: 8,
+          paddingBottom: 20
+        }}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3b82f6']}
+            tintColor="#3b82f6"
+          />
+        }
+        ListEmptyComponent={
+          loading
+            ? null
+            : (
+              <View className="flex-1 items-center justify-center py-10">
+                <Text className="text-gray-500">No se encontraron productos</Text>
+              </View>
+            )
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View className="py-4">
+              <ActivityIndicator size="small" color="#3b82f6" />
+            </View>
+          ) : null
+        }
+        onEndReached={loadMoreItems}
+        onEndReachedThreshold={0.2}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={10}
       />
 
       <BottomSheetModal
@@ -267,6 +357,7 @@ const CategoryProductScreen = memo(() => {
                     <Text className="text-2xl font-bold">L.{total.toFixed(2)}</Text>
                   </View>
                 </View>
+
                 <TouchableOpacity className="mt-4 bg-blue-600 rounded-lg py-3 items-center" onPress={handleAddToCart}>
                   <Text className="text-white font-bold">Agregar al carrito</Text>
                 </TouchableOpacity>
