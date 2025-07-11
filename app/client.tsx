@@ -60,7 +60,7 @@ const PedidosScreen = memo(() => {
             priceListNum: customer.priceListNum
           },
         });
-        console.log('Navegación a /shop iniciada a: ', customer.cardName);
+        console.log('Cliente Seleccionado', customer.cardCode);
       } catch (err) {
         console.error('Error al navegar:', err);
         Alert.alert('Error de navegación', 'No se pudo abrir la pantalla de pedido. Por favor, inténtalo de nuevo.');
@@ -81,7 +81,7 @@ const PedidosScreen = memo(() => {
         </View>
 
         <View className="flex-1 justify-center gap-2">
-          <Text className="font-semibold text-lg text-black lowercase tracking-tight">
+          <Text className="font-[Poppins-SemiBold] text-lg text-black lowercase tracking-tight">
             {customer.cardName}
           </Text>
 
