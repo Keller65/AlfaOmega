@@ -1,6 +1,7 @@
 import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View, TextInput, Alert, Image, RefreshControl } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View, TextInput, Alert, Image, RefreshControl } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 import { useRoute } from '@react-navigation/native';
@@ -89,7 +90,6 @@ const CategoryProductScreen = memo(() => {
 
     const currentPage = loadMore ? page + 1 : 1;
 
-    // Solo usar caché si no es un refresh forzado y no estamos cargando más
     if (!forceRefresh && !loadMore && pagesCache.has(currentPage)) {
       setItems(Array.from(pagesCache.values()).flat());
       setLoading(false);
@@ -105,13 +105,17 @@ const CategoryProductScreen = memo(() => {
         'Content-Type': 'application/json',
       };
 
-      // Construir URL considerando cuando groupCode está vacío (categoría "Todas")
       let url = `http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+
+      if (priceListNum) {
+        url += `&priceList=${priceListNum}`;
+      }
       if (groupCode) {
         url += `&groupCode=${groupCode}`;
       }
 
-      // Hacer las peticiones en paralelo
+      console.log('Fetching products from:', url);
+
       const [itemsResponse, discountsResponse] = await Promise.all([
         axios.get(url, { headers }),
         axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers })
@@ -130,13 +134,10 @@ const CategoryProductScreen = memo(() => {
         };
       });
 
-      // Actualizar caché y estado
       const newCache = forceRefresh ? new Map() : new Map(pagesCache);
       newCache.set(currentPage, productosCombinados);
       setPagesCache(newCache);
 
-      // Para la carga inicial o refresh, reemplazar todos los items
-      // Para carga incremental, concatenar con los existentes
       setItems(prevItems =>
         loadMore ? [...prevItems, ...productosCombinados] : Array.from(newCache.values()).flat()
       );
@@ -147,7 +148,7 @@ const CategoryProductScreen = memo(() => {
         setPage(currentPage);
       }
       setTotalItems(itemsResponse.data.total);
-
+      console.log('Productos cargados:', productosCombinados);
     } catch (err: any) {
       setError(err?.message || 'Error inesperado');
       if (!loadMore) setItems([]);
@@ -156,17 +157,15 @@ const CategoryProductScreen = memo(() => {
       setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [user?.token, groupCode, page, pagesCache]);
+  }, [user?.token, groupCode, priceListNum, page, pagesCache]);
 
   useEffect(() => {
-    // Resetear el estado cuando cambia la categoría
     setPagesCache(new Map());
     setItems([]);
     setPage(1);
     setLoading(true);
-
     fetchProducts();
-  }, [groupCode]);
+  }, [groupCode, priceListNum]);
 
   useEffect(() => {
     if (!selectedItem) return setTotal(0);
@@ -231,9 +230,13 @@ const CategoryProductScreen = memo(() => {
     );
   }, [items, debouncedSearchText]);
 
+  const renderItem = useCallback(({ item }: { item: ProductDiscount }) => (
+    <ProductItem item={item} onPress={handleProductPress} />
+  ), []);
+
   if (loading && !loadingMore) {
     return (
-      <View className="flex-1 items-center justify-center">
+      <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text className="mt-4 text-gray-600">Cargando productos...</Text>
       </View>
@@ -245,10 +248,9 @@ const CategoryProductScreen = memo(() => {
       <View className="flex-1 items-center justify-center p-4">
         <Text className="text-red-500 text-center mb-4">{error}</Text>
         <TouchableOpacity
-          className="bg-blue-500 px-4 py-2 rounded-lg"
           onPress={onRefresh}
         >
-          <Text className="text-white">Reintentar</Text>
+          <Text className="text-blue-500">Reintentar</Text>
         </TouchableOpacity>
       </View>
     );
@@ -256,23 +258,21 @@ const CategoryProductScreen = memo(() => {
 
   return (
     <View className="flex-1 bg-white">
-      <FlatList
+      <FlashList
         data={filteredItems}
-        renderItem={({ item }) => (
-          <ProductItem
-            item={item}
-            onPress={handleProductPress}
-          />
-        )}
+        renderItem={renderItem}
         keyExtractor={(item) => item.itemCode}
+        estimatedItemSize={200}
         numColumns={2}
-        className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 8,
-          paddingTop: 8,
-          paddingBottom: 20
-        }}
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
+        onEndReached={loadMoreItems}
+        onEndReachedThreshold={0.2}
+        ListFooterComponent={
+          loadingMore ? (
+            <View className="py-4">
+              <ActivityIndicator size="small" color="#3b82f6" />
+            </View>
+          ) : null
+        }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -281,29 +281,17 @@ const CategoryProductScreen = memo(() => {
             tintColor="#3b82f6"
           />
         }
-        ListEmptyComponent={
-          loading
-            ? null
-            : (
-              <View className="flex-1 items-center justify-center py-10">
-                <Text className="text-gray-500">No se encontraron productos</Text>
-              </View>
-            )
-        }
-        ListFooterComponent={
-          loadingMore ? (
-            <View className="py-4">
-              <ActivityIndicator size="small" color="#3b82f6" />
-            </View>
-          ) : null
-        }
-        onEndReached={loadMoreItems}
-        onEndReachedThreshold={0.2}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={10}
+        contentContainerStyle={{
+          paddingHorizontal: 8,
+          paddingBottom: 20
+        }}
+        drawDistance={500} // Pre-renderiza items con más anticipación
+        overrideItemLayout={(layout, item) => {
+          layout.size = 200; // Ajusta según tu diseño real
+        }}
       />
 
+      {/* Bottom Sheet (se mantiene igual) */}
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}

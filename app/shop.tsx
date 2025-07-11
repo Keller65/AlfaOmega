@@ -161,7 +161,7 @@ export default function TopTabNavigatorLayout() {
         initialParams={{
           groupName: category.name,
           groupCode: category.code,
-          priceList: clientPriceList,
+          priceListNum: priceListNum,
         }}
       />
     ))
