@@ -30,7 +30,7 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
       <View className="gap-3 p-2">
         <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px]">
           <Image
-            source={{ uri: 'https://via.placeholder.com/150' }}
+            source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
             className="w-[150px] h-[150px]"
             resizeMode="contain"
           />
@@ -305,7 +305,7 @@ const CategoryProductScreen = memo(() => {
             <View className="w-full px-4 space-y-6">
               <View>
                 <View className="w-full h-[200px] items-center justify-center bg-gray-200 rounded-xl mb-4">
-                  <Image source={{ uri: 'https://via.placeholder.com/200' }} className="w-[200px] h-[200px]" resizeMode="contain" />
+                  <Image source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }} className="w-[200px] h-[200px]" resizeMode="contain" />
                 </View>
                 <Text className="text-xl font-semibold mb-1">{selectedItem.itemName}</Text>
                 <Text>UPC: {selectedItem.itemCode}</Text>

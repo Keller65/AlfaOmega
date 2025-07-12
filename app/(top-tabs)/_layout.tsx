@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import slugify from 'slugify';
 import { useAuth } from '../../context/auth';
-import { useRoute } from '@react-navigation/native'; // Import useRoute
+import { useRoute } from '@react-navigation/native';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './category-product-list';
@@ -23,36 +23,32 @@ interface ProductCategory {
   slug: string;
 }
 
-interface SelectedClient { // Define the interface for selected client data from async storage
+interface SelectedClient {
   cardCode: string;
   cardName: string;
   federalTaxID?: string;
-  priceListNum?: string; // Ensure this is present
+  priceListNum?: string;
 }
 
 export default function TopTabNavigatorLayout() {
   const { user } = useAuth();
   const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true); // Renamed for clarity
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined); // State to hold the priceListNum
-  const [loadingClientData, setLoadingClientData] = useState(true); // New state for client data loading
+  const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
+  const [loadingClientData, setLoadingClientData] = useState(true);
 
-  const route = useRoute(); // Get route object
-  // Destructure priceListNum from route.params, which comes from PedidosScreen
+  const route = useRoute();
   const { priceListNum: routePriceListNum } = route.params as { priceListNum?: string };
 
-  // This useEffect will load the priceListNum from route params or AsyncStorage
   useEffect(() => {
     const loadClientPriceList = async () => {
       setLoadingClientData(true);
       let currentPriceList: string | undefined;
 
       if (routePriceListNum) {
-        // If priceListNum is directly available from route params (e.g., from PedidosScreen)
         currentPriceList = routePriceListNum;
       } else {
-        // Otherwise, try to load from AsyncStorage (e.g., if navigating back or deep linking)
         try {
           const cachedClientData = await AsyncStorage.getItem('selectedClient');
           if (cachedClientData) {
@@ -64,16 +60,15 @@ export default function TopTabNavigatorLayout() {
         }
       }
 
-      // Fallback to a default price list if still not found
       if (!currentPriceList) {
-        currentPriceList = '1'; // Default price list, adjust as needed
+        currentPriceList = '1';
       }
       setClientPriceList(currentPriceList);
       setLoadingClientData(false);
     };
 
     loadClientPriceList();
-  }, [routePriceListNum]); // Re-run if the priceListNum from route changes
+  }, [routePriceListNum]);
 
 
   const headers = useMemo(() => ({
@@ -99,14 +94,11 @@ export default function TopTabNavigatorLayout() {
         return;
       }
 
-      // Fetch categories from the API
       const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/categories', { headers }); // Assuming this endpoint gives categories directly or items to extract categories from
 
       const uniqueCategories = new Map<number, string>();
-       // If the API gives categories directly, you might not need to loop through allProducts.
-       // Assuming `response.data` is an array of { code: string, name: string } as in previous examples:
-      response.data.forEach((cat: any) => { // Adjust 'any' to specific category type if available
-         uniqueCategories.set(cat.code, cat.name);
+      response.data.forEach((cat: any) => {
+        uniqueCategories.set(cat.code, cat.name);
       });
 
 
@@ -116,7 +108,7 @@ export default function TopTabNavigatorLayout() {
         slug: slugify(name, { lower: true, strict: true }),
       }));
 
-      formattedCategories.unshift({ groupCode: 0, groupName: 'Todas', slug: 'todas' });
+      formattedCategories.unshift({ groupCode: 0, groupName: '0000', slug: 'todas' });
 
       await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
       setCategories(formattedCategories);
@@ -139,9 +131,7 @@ export default function TopTabNavigatorLayout() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // Combine loading states for the main loading indicator
   const isLoading = loadingClientData || loadingCategories || clientPriceList === undefined;
-
 
   const tabScreens = useMemo(() => (
     categories.map((category) => (
@@ -155,11 +145,11 @@ export default function TopTabNavigatorLayout() {
         initialParams={{
           groupName: category.groupName,
           groupCode: category.groupCode.toString(),
-          priceListNum: clientPriceList, // Pass the determined priceListNum here
+          priceListNum: clientPriceList,
         }}
       />
     ))
-  ), [categories, clientPriceList]); // Add clientPriceList to dependencies
+  ), [categories, clientPriceList]);
 
   if (!user?.token) {
     return (
@@ -169,7 +159,7 @@ export default function TopTabNavigatorLayout() {
     );
   }
 
-  if (isLoading) { // Use the combined loading state
+  if (isLoading) {
     return (
       <View style={styles.fullScreenCenter}>
         <ActivityIndicator size="large" color="#007bff" />
@@ -218,7 +208,7 @@ export default function TopTabNavigatorLayout() {
             width: 230,
             fontWeight: 'bold',
           },
-          tabBarPressColor: 'transparent',
+          tabBarPressColor: 'rgba(0,0,0,0.1)',
           tabBarScrollEnabled: true,
         }}
       >

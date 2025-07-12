@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, memo } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert, FlatList } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert, FlatList, TextInput } from 'react-native';
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
@@ -7,8 +7,10 @@ import axios from 'axios';
 import { useAppStore } from '@/state/index';
 import { Customer } from '@/types/types';
 
-const PedidosScreen = memo(() => {
+const ClientScreen = memo(() => {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -35,15 +37,33 @@ const PedidosScreen = memo(() => {
       })
       .then((res) => {
         setCustomers(res.data.items || []);
+        setFilteredCustomers(res.data.items || []);
         console.log('Clientes cargados:', res.data.items);
       })
       .catch((err) => {
         console.error('Error al cargar clientes:', err);
         setError(err.response?.data?.message || err.message || 'Error desconocido al cargar clientes.');
         setCustomers([]);
+        setFilteredCustomers([]);
       })
       .finally(() => setLoading(false));
   }, [user?.salesPersonCode, user?.token]);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setFilteredCustomers(customers);
+      return;
+    }
+    const lowerSearch = search.toLowerCase();
+    setFilteredCustomers(
+      customers.filter(
+        (c) =>
+          c.cardName.toLowerCase().includes(lowerSearch) ||
+          c.cardCode.toLowerCase().includes(lowerSearch) ||
+          (c.federalTaxID && c.federalTaxID.toLowerCase().includes(lowerSearch))
+      )
+    );
+  }, [search, customers]);
 
   const handleCustomerPress = useCallback(
     async (customer: Customer) => {
@@ -51,7 +71,7 @@ const PedidosScreen = memo(() => {
         setSelectedCustomer(customer);
         console.log('Cliente seleccionado en Zustand:', customer.cardName);
 
-        await router.push({
+        router.push({
           pathname: '/shop',
           params: {
             cardCode: customer.cardCode,
@@ -135,17 +155,32 @@ const PedidosScreen = memo(() => {
 
   return (
     <View className="flex-1 bg-white">
+      <View className="px-4">
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar por nombre, código o RTN"
+          className="border border-gray-300 rounded-full px-6 py-3 mb-2 text-base"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
       <FlatList
-        data={customers}
+        data={filteredCustomers}
         renderItem={renderCustomerItem}
         keyExtractor={(item) => item.cardCode}
         contentContainerStyle={{ paddingVertical: 24, rowGap: 24 }}
         initialNumToRender={10}
         maxToRenderPerBatch={5}
         windowSize={21}
+        ListEmptyComponent={
+          <View className="justify-center items-center py-10">
+            <Text className="text-gray-500 text-base font-normal text-center">No se encontraron clientes con ese criterio.</Text>
+          </View>
+        }
       />
     </View>
   );
 });
 
-export default PedidosScreen;
+export default ClientScreen;
