@@ -5,30 +5,47 @@ import { useRouter } from 'expo-router';
 import PlusIcon from '@/assets/icons/PlusIcon';
 import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
-import { useAppStore } from '@/state/index';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList } from '@gorhom/bottom-sheet';
-import * as Haptics from 'expo-haptics';
 import TrashIcon from '@/assets/icons/TrashIcon';
+import { useAppStore } from '@/state/index';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
+import '../../global.css';
 
-const CartItem = memo(({ item, onUpdateQty, onRemove }: {
-  item: any,
-  onUpdateQty: (code: string, qty: number) => void,
-  onRemove: (code: string, name: string) => void
-}) => {
+interface CartItemType {
+  itemCode: string;
+  itemName: string;
+  unitPrice: number;
+  quantity: number;
+  total: number;
+}
+
+interface CartItemProps {
+  item: CartItemType;
+  onUpdateQty: (code: string, qty: number) => void;
+  onRemove: (code: string, name: string) => void;
+}
+
+const snapPoints: string[] = ['60%', '85%'];
+
+const areEqual = (prev: CartItemProps, next: CartItemProps) =>
+  prev.item.itemCode === next.item.itemCode &&
+  prev.item.quantity === next.item.quantity &&
+  prev.item.total === next.item.total;
+
+const CartItem = memo(({ item, onUpdateQty, onRemove }: CartItemProps) => {
   const removeRequested = useRef(false);
 
-  const handleChange = (type: 'add' | 'sub') => {
+  const handleChange = useCallback((type: 'add' | 'sub') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newQty = type === 'add' ? item.quantity + 1 : Math.max(1, item.quantity - 1);
     onUpdateQty(item.itemCode, newQty);
-  };
+  }, [item, onUpdateQty]);
 
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
     if (removeRequested.current) return;
     removeRequested.current = true;
-
     onRemove(item.itemCode, item.itemName);
-  };
+  }, [item, onRemove]);
 
   return (
     <View className="mb-3 border-b pb-3 border-gray-200 px-4">
@@ -45,7 +62,6 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: {
               onPress={() => handleChange('sub')}
               className="bg-gray-200 p-2 rounded-full"
               disabled={item.quantity <= 1}
-              accessibilityLabel={`Reducir cantidad de ${item.itemName}`}
             >
               <MinusIcon size={16} color={item.quantity <= 1 ? "#ccc" : "#000"} />
             </TouchableOpacity>
@@ -64,7 +80,6 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: {
             <TouchableOpacity
               onPress={() => handleChange('add')}
               className="bg-gray-200 p-2 rounded-full"
-              accessibilityLabel={`Aumentar cantidad de ${item.itemName}`}
             >
               <PlusIcon size={16} />
             </TouchableOpacity>
@@ -77,19 +92,15 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: {
         <TouchableOpacity
           onPress={handleRemove}
           className="p-2 rounded-full bg-red-100 self-start"
-          accessibilityLabel={`Eliminar ${item.itemName} del carrito`}
         >
           <TrashIcon size={20} color="red" />
         </TouchableOpacity>
       </View>
     </View>
   );
-});
+}, areEqual);
 
-const EmptyCart = ({ onClose, onAddProducts }: {
-  onClose: () => void,
-  onAddProducts: () => void
-}) => (
+const EmptyCart: React.FC<{ onClose: () => void; onAddProducts: () => void }> = ({ onClose, onAddProducts }) => (
   <View className="flex-1 items-center justify-center pb-20 px-4">
     <View className="bg-gray-100 p-6 rounded-full mb-4">
       <CartIcon size={32} color="#999" />
@@ -115,62 +126,28 @@ const EmptyCart = ({ onClose, onAddProducts }: {
 
 export default function PedidosScreen() {
   const router = useRouter();
-  const products = useAppStore((state) => state.products);
-  const updateQuantity = useAppStore((state) => state.updateQuantity);
-  const removeProduct = useAppStore((state) => state.removeProduct);
+  const products = useAppStore((s) => s.products);
+  const updateQuantity = useAppStore((s) => s.updateQuantity);
+  const removeProduct = useAppStore((s) => s.removeProduct);
+
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => sum + item.total, 0);
   }, [products]);
 
-  const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = useMemo(() => ['60%', '85%'], []);
-
-  const openCart = () => {
+  const openCart = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     bottomSheetRef.current?.present();
-  };
+  }, []);
 
-  const closeCart = () => {
+  const closeCart = useCallback(() => {
     bottomSheetRef.current?.dismiss();
-  };
+  }, []);
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) closeCart();
-  }, []);
-
-  const renderBottomSheetFooter = useCallback(
-    (props: any) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
-        <View
-          className="bg-white border-t border-gray-200 px-4 py-4"
-        >
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-base text-gray-700 font-[Poppins-Medium]">Total</Text>
-            <Text
-              className="text-xl font-[Poppins-Bold] text-black "
-            >
-              L. {total.toFixed(2)}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-lg"
-            onPress={() => {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              console.log('Realizar pedido', Date());
-              closeCart();
-            }}
-            accessibilityLabel="Realizar pedido"
-          >
-            <CartIcon color="white" />
-            <Text className="text-white font-[Poppins-Regular] ml-2 tracking-[-0.3px]">Realizar Pedido</Text>
-          </TouchableOpacity>
-        </View>
-      </BottomSheetFooter>
-    ),
-    [total]
-  );
+  }, [closeCart]);
 
   const handleUpdateQuantity = useCallback((itemCode: string, newQty: number) => {
     updateQuantity(itemCode, Math.max(1, newQty));
@@ -181,10 +158,7 @@ export default function PedidosScreen() {
       'Eliminar producto',
       `¿Estás seguro de que quieres eliminar "${itemName}" del carrito?`,
       [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
+        { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           onPress: () => {
@@ -196,7 +170,7 @@ export default function PedidosScreen() {
     );
   }, [removeProduct]);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
+  const renderItem = useCallback(({ item }: { item: CartItemType }) => (
     <CartItem
       item={item}
       onUpdateQty={handleUpdateQuantity}
@@ -204,23 +178,38 @@ export default function PedidosScreen() {
     />
   ), [handleUpdateQuantity, handleRemoveItem]);
 
+  const renderFooter = useCallback((props: BottomSheetFooterProps) => (
+    <BottomSheetFooter {...props} bottomInset={0}>
+      <View className="bg-white border-t border-gray-200 px-4 py-4">
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-base text-gray-700 font-[Poppins-Medium]">Total</Text>
+          <Text className="text-xl font-[Poppins-Bold] text-black">L. {total.toFixed(2)}</Text>
+        </View>
+        <TouchableOpacity
+          className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-lg"
+          onPress={() => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            console.log('Realizar pedido', Date());
+            closeCart();
+          }}
+        >
+          <CartIcon color="white" />
+          <Text className="text-white font-[Poppins-Regular] ml-2">Realizar Pedido</Text>
+        </TouchableOpacity>
+      </View>
+    </BottomSheetFooter>
+  ), [total, closeCart]);
+
   return (
-    <View
-      className="flex-1 bg-white"
-      style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}
-    >
+    <View className="flex-1 bg-white" style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>
       <View className="absolute bottom-8 right-8 gap-3 items-end z-10">
         {products.length > 0 && (
           <TouchableOpacity
             className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f] shadow-lg shadow-[#09f]/30"
             onPress={openCart}
-            activeOpacity={0.7}
-            accessibilityLabel="Ver carrito"
           >
             <CartIcon color="white" />
-            <View
-              className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center"
-            >
+            <View className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center">
               <Text className="text-white text-xs font-bold">{products.length}</Text>
             </View>
           </TouchableOpacity>
@@ -228,8 +217,6 @@ export default function PedidosScreen() {
         <TouchableOpacity
           className="rounded-full flex items-center justify-center h-[50px] w-[50px] bg-[#09f] shadow-lg shadow-[#09f]/30"
           onPress={() => router.push('/client')}
-          activeOpacity={0.7}
-          accessibilityLabel="Añadir productos"
         >
           <PlusIcon color="white" />
         </TouchableOpacity>
@@ -240,8 +227,8 @@ export default function PedidosScreen() {
         index={0}
         snapPoints={snapPoints}
         onChange={handleSheetChanges}
-        footerComponent={renderBottomSheetFooter}
-        backdropComponent={(props) => (
+        footerComponent={renderFooter}
+        backdropComponent={(props: BottomSheetBackdropProps) => (
           <BottomSheetBackdrop
             {...props}
             appearsOnIndex={0}
@@ -252,24 +239,16 @@ export default function PedidosScreen() {
         )}
       >
         <>
-          <Text className="text-lg font-bold mb-4 px-4">
-            Resumen del Pedido
-          </Text>
-
+          <Text className="text-lg font-bold mb-4 px-4">Resumen del Pedido</Text>
           {products.length === 0 ? (
-            <EmptyCart
-              onClose={closeCart}
-              onAddProducts={() => router.push('/client')}
-            />
+            <EmptyCart onClose={closeCart} onAddProducts={() => router.push('/client')} />
           ) : (
             <BottomSheetFlatList
               className="mb-[100px]"
               data={products}
               keyExtractor={(item) => item.itemCode}
               renderItem={renderItem}
-              getItemLayout={(data, index) => (
-                { length: 150, offset: 150 * index, index }
-              )}
+              getItemLayout={(_, index) => ({ length: 150, offset: 150 * index, index })}
               initialNumToRender={5}
               maxToRenderPerBatch={5}
               windowSize={10}
