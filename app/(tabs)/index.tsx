@@ -1,30 +1,83 @@
-import Constants from 'expo-constants';
-import { Text, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
-import "../../global.css";
+import React, { useEffect, useState } from 'react';
+import { View, Text, Alert, Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import '../../global.css'
 
-export default function HomeScreen() {
-  const [user, setUser] = useState<any>(null);
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+export default function App() {
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
+    registerForPushNotificationsAsync()
+      .then(token => setExpoPushToken(token))
+      .catch(console.error);
+
+    // Escuchar notificaciones cuando llegan
+    const subscription1 = Notifications.addNotificationReceivedListener(notification => {
+      setNotification(notification);
+    });
+
+    // Escuchar interacción con la notificación
+    const subscription2 = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notificación interactuada:', response);
+    });
+
+    return () => {
+      subscription1.remove();
+      subscription2.remove();
     };
-    fetchUser();
   }, []);
 
+  async function registerForPushNotificationsAsync(): Promise<string | null> {
+    if (!Device.isDevice) {
+      Alert.alert('Debes usar un dispositivo físico para recibir notificaciones');
+      return null;
+    }
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      Alert.alert('No se concedieron permisos para notificaciones');
+      return null;
+    }
+
+    try {
+      const tokenData = await Notifications.getDevicePushTokenAsync();
+      console.log('Token FCM:', tokenData.data);
+      return tokenData.data;
+    } catch (error) {
+      Alert.alert('Error obteniendo token', `${error}`);
+      return null;
+    }
+  }
+
   return (
-    <View className='bg-white flex-1' style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>
-      <Text>Bienvenido al sistema de gestión de inventario</Text>
-      {user && (
-        <View style={{ marginTop: 16 }}>
-          <Text>Usuario: {user.fullName}</Text>
-          <Text>token: {user.token}</Text>
-        </View>
+    <View className='flex-1 justify-center items-center bg-white p-6'>
+      <Text>Token FCM:</Text>
+      <Text selectable>{expoPushToken ?? 'Obteniendo token...'}</Text>
+      {notification && (
+        <>
+          <Text style={{ marginTop: 20 }}>Notificación recibida:</Text>
+          <Text>Título: {notification.request.content.title}</Text>
+          <Text>Mensaje: {notification.request.content.body}</Text>
+        </>
       )}
     </View>
   );
