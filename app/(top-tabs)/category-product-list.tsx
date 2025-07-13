@@ -1,14 +1,14 @@
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View, TextInput, Alert, Image, RefreshControl } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useAuth } from '../../context/auth';
-import { ProductDiscount } from '../../types/types';
-import { useRoute } from '@react-navigation/native';
 import { useAppStore } from '@/state/index';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useRoute } from '@react-navigation/native';
+import { FlashList } from '@shopify/flash-list';
 import axios from 'axios';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Image, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
+import { useAuth } from '../../context/auth';
+import { ProductDiscount } from '../../types/types';
 
 const PAGE_SIZE = 20;
 
@@ -89,7 +89,7 @@ const CategoryProductScreen = memo(() => {
       return;
     }
 
-    const currentPage = loadMore ? page + 1 : 1;
+    const currentPage = loadMore ? page : 1;
 
     if (!forceRefresh && !loadMore && pagesCacheRef.current.has(currentPage)) {
       setItems(Array.from(pagesCacheRef.current.values()).flat());
@@ -111,11 +111,10 @@ const CategoryProductScreen = memo(() => {
       if (priceListNum) {
         url += `&priceList=${priceListNum}`;
       }
+      
       if (groupCode) {
         url += `&groupCode=${groupCode}`;
       }
-
-      console.log('Fetching products from:', url);
 
       const [itemsResponse, discountsResponse] = await Promise.all([
         axios.get(url, { headers }),
@@ -147,7 +146,7 @@ const CategoryProductScreen = memo(() => {
       setPage(currentPage);
       setTotalItems(itemsResponse.data.total);
 
-      console.log('Productos cargados:', productosCombinados);
+      console.log("Productos en descuento:", discountsResponse.data);
     } catch (err: any) {
       setError(err?.message || 'Error inesperado');
       if (!loadMore) setItems([]);
@@ -159,7 +158,7 @@ const CategoryProductScreen = memo(() => {
   }, [user?.token, groupCode, priceListNum, page]);
 
   useEffect(() => {
-    // Resetea cache y estado cuando cambian filtros
+    // Resetear cache y estado cuando cambian filtros 
     pagesCacheRef.current = new Map();
     setItems([]);
     setPage(1);
@@ -188,14 +187,24 @@ const CategoryProductScreen = memo(() => {
 
   const loadMoreItems = useCallback(() => {
     if (!loadingMore && items.length < totalItems) {
+      setPage(prev => prev + 1);
+    }
+    if (!loadingMore && items.length >= totalItems && items.length % PAGE_SIZE === 0) {
+      setPage(prev => prev + 1);
+    }
+  }, [loadingMore, items.length, totalItems]);
+
+  useEffect(() => {
+    if (page > 1) {
       fetchProducts({ loadMore: true });
     }
-  }, [loadingMore, items.length, totalItems, fetchProducts]);
+  }, [page, fetchProducts]);
 
   const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
     setQuantity(1);
     bottomSheetModalRef.current?.present();
+    console.log('Producto seleccionado:', item);
   }, []);
 
   const handleAddToCart = useCallback(() => {
@@ -268,17 +277,20 @@ const CategoryProductScreen = memo(() => {
         onEndReached={loadMoreItems}
         onEndReachedThreshold={0.2}
         ListFooterComponent={
-          loadingMore ? (
-            <View className="py-4">
-              <ActivityIndicator size="small" color="#3b82f6" />
-            </View>
-          ) : null
+          <View>
+            {loadingMore && (
+              <ActivityIndicator size="large" color="#3b82f6" />
+            )}
+            {!loadingMore && items.length > 0 && items.length % PAGE_SIZE !== 0 && (
+              <Text className="text-gray-400 text-center">No hay más productos para mostrar</Text>
+            )}
+          </View>
         }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#3b82f6']}
+            colors={["#3b82f6"]}
             tintColor="#3b82f6"
           />
         }
@@ -286,9 +298,9 @@ const CategoryProductScreen = memo(() => {
           paddingHorizontal: 8,
           paddingBottom: 20,
         }}
-        drawDistance={500} // Pre-renderiza items con más anticipación
+        drawDistance={500}
         overrideItemLayout={(layout, item) => {
-          layout.size = 200; // Ajusta según tu diseño real
+          layout.size = 100;
         }}
       />
 
