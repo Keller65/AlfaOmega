@@ -61,7 +61,8 @@ const CategoryProductScreen = memo(() => {
   const productsInCart = useAppStore(state => state.products);
   const debouncedSearchText = useAppStore(state => state.debouncedSearchText);
 
-  const [pagesCache, setPagesCache] = useState<Map<number, ProductDiscount[]>>(new Map());
+  const pagesCacheRef = useRef<Map<number, ProductDiscount[]>>(new Map());
+
   const [items, setItems] = useState<ProductDiscount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +91,8 @@ const CategoryProductScreen = memo(() => {
 
     const currentPage = loadMore ? page + 1 : 1;
 
-    if (!forceRefresh && !loadMore && pagesCache.has(currentPage)) {
-      setItems(Array.from(pagesCache.values()).flat());
+    if (!forceRefresh && !loadMore && pagesCacheRef.current.has(currentPage)) {
+      setItems(Array.from(pagesCacheRef.current.values()).flat());
       setLoading(false);
       return;
     }
@@ -134,20 +135,18 @@ const CategoryProductScreen = memo(() => {
         };
       });
 
-      const newCache = forceRefresh ? new Map() : new Map(pagesCache);
-      newCache.set(currentPage, productosCombinados);
-      setPagesCache(newCache);
+      if (forceRefresh) {
+        pagesCacheRef.current = new Map();
+      }
+      pagesCacheRef.current.set(currentPage, productosCombinados);
 
       setItems(prevItems =>
-        loadMore ? [...prevItems, ...productosCombinados] : Array.from(newCache.values()).flat()
+        loadMore ? [...prevItems, ...productosCombinados] : Array.from(pagesCacheRef.current.values()).flat()
       );
 
-      if (!loadMore) {
-        setPage(1);
-      } else {
-        setPage(currentPage);
-      }
+      setPage(currentPage);
       setTotalItems(itemsResponse.data.total);
+
       console.log('Productos cargados:', productosCombinados);
     } catch (err: any) {
       setError(err?.message || 'Error inesperado');
@@ -157,18 +156,22 @@ const CategoryProductScreen = memo(() => {
       setLoadingMore(false);
       setRefreshing(false);
     }
-  }, [user?.token, groupCode, priceListNum, page, pagesCache]);
+  }, [user?.token, groupCode, priceListNum, page]);
 
   useEffect(() => {
-    setPagesCache(new Map());
+    // Resetea cache y estado cuando cambian filtros
+    pagesCacheRef.current = new Map();
     setItems([]);
     setPage(1);
     setLoading(true);
     fetchProducts();
-  }, [groupCode, priceListNum]);
+  }, [groupCode, priceListNum, fetchProducts]);
 
   useEffect(() => {
-    if (!selectedItem) return setTotal(0);
+    if (!selectedItem) {
+      setTotal(0);
+      return;
+    }
     let newUnitPrice = selectedItem.price;
     const applicable = selectedItem.tiers?.filter(t => quantity >= t.qty).sort((a, b) => b.qty - a.qty)[0];
     if (applicable) newUnitPrice = applicable.price;
@@ -176,26 +179,26 @@ const CategoryProductScreen = memo(() => {
     setTotal(newUnitPrice * quantity);
   }, [selectedItem, quantity]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setPagesCache(new Map());
+    pagesCacheRef.current = new Map();
     setPage(1);
     fetchProducts({ forceRefresh: true });
-  };
+  }, [fetchProducts]);
 
-  const loadMoreItems = () => {
+  const loadMoreItems = useCallback(() => {
     if (!loadingMore && items.length < totalItems) {
       fetchProducts({ loadMore: true });
     }
-  };
+  }, [loadingMore, items.length, totalItems, fetchProducts]);
 
-  const handleProductPress = (item: ProductDiscount) => {
+  const handleProductPress = useCallback((item: ProductDiscount) => {
     setSelectedItem(item);
     setQuantity(1);
     bottomSheetModalRef.current?.present();
-  };
+  }, []);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = useCallback(() => {
     if (!selectedItem || quantity <= 0) return;
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
     const productData = { ...selectedItem, quantity, unitPrice };
@@ -219,7 +222,7 @@ const CategoryProductScreen = memo(() => {
       addProduct(productData);
       bottomSheetModalRef.current?.dismiss();
     }
-  };
+  }, [addProduct, productsInCart, quantity, selectedItem, unitPrice, updateQuantity]);
 
   const filteredItems = useMemo(() => {
     const text = debouncedSearchText?.toLowerCase() || '';
@@ -232,7 +235,7 @@ const CategoryProductScreen = memo(() => {
 
   const renderItem = useCallback(({ item }: { item: ProductDiscount }) => (
     <ProductItem item={item} onPress={handleProductPress} />
-  ), []);
+  ), [handleProductPress]);
 
   if (loading && !loadingMore) {
     return (
@@ -247,9 +250,7 @@ const CategoryProductScreen = memo(() => {
     return (
       <View className="flex-1 items-center justify-center p-4">
         <Text className="text-red-500 text-center mb-4">{error}</Text>
-        <TouchableOpacity
-          onPress={onRefresh}
-        >
+        <TouchableOpacity onPress={onRefresh}>
           <Text className="text-blue-500">Reintentar</Text>
         </TouchableOpacity>
       </View>
@@ -283,7 +284,7 @@ const CategoryProductScreen = memo(() => {
         }
         contentContainerStyle={{
           paddingHorizontal: 8,
-          paddingBottom: 20
+          paddingBottom: 20,
         }}
         drawDistance={500} // Pre-renderiza items con más anticipación
         overrideItemLayout={(layout, item) => {
@@ -291,7 +292,6 @@ const CategoryProductScreen = memo(() => {
         }}
       />
 
-      {/* Bottom Sheet (se mantiene igual) */}
       <BottomSheetModal
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
@@ -305,7 +305,11 @@ const CategoryProductScreen = memo(() => {
             <View className="w-full px-4 space-y-6">
               <View>
                 <View className="w-full h-[200px] items-center justify-center bg-gray-200 rounded-xl mb-4">
-                  <Image source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }} className="w-[200px] h-[200px]" resizeMode="contain" />
+                  <Image
+                    source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
+                    className="w-[200px] h-[200px]"
+                    resizeMode="contain"
+                  />
                 </View>
                 <Text className="text-xl font-semibold mb-1">{selectedItem.itemName}</Text>
                 <Text>UPC: {selectedItem.itemCode}</Text>
