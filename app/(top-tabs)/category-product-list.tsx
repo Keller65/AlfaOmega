@@ -111,7 +111,7 @@ const CategoryProductScreen = memo(() => {
       if (priceListNum) {
         url += `&priceList=${priceListNum}`;
       }
-      
+
       if (groupCode) {
         url += `&groupCode=${groupCode}`;
       }
@@ -186,6 +186,7 @@ const CategoryProductScreen = memo(() => {
   }, [fetchProducts]);
 
   const loadMoreItems = useCallback(() => {
+    // Solo cargar más si no está cargando y hay más productos por cargar
     if (!loadingMore && items.length < totalItems) {
       setPage(prev => prev + 1);
     }
@@ -323,11 +324,10 @@ const CategoryProductScreen = memo(() => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text className="text-xl font-semibold mb-1">{selectedItem.itemName}</Text>
-                <Text>UPC: {selectedItem.itemCode}</Text>
-                <Text>Stock: {selectedItem.inStock}</Text>
-                <Text>Committed: {selectedItem.committed}</Text>
-                <Text>Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+                <Text className="text-[20px] font-[Poppins-Bold] mb-1 tracking-[-0.3px]">{selectedItem.itemName}</Text>
+                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.itemCode}</Text>
+                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
+                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
                 {selectedItem.tiers?.length > 0 && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
                     <Text className="font-semibold mb-1">Precios por cantidad:</Text>
@@ -357,13 +357,13 @@ const CategoryProductScreen = memo(() => {
                     </TouchableOpacity>
                   </View>
                   <View className="w-[126px]">
-                    <Text className="text-base text-gray-500">Total</Text>
-                    <Text className="text-2xl font-bold">L.{total.toFixed(2)}</Text>
+                    <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px]">Total</Text>
+                    <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">L.{total.toFixed(2)}</Text>
                   </View>
                 </View>
 
                 <TouchableOpacity className="mt-4 bg-blue-600 rounded-lg py-3 items-center" onPress={handleAddToCart}>
-                  <Text className="text-white font-bold">Agregar al carrito</Text>
+                  <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
                 </TouchableOpacity>
                 <Text className="text-xs text-gray-500 mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>
               </View>

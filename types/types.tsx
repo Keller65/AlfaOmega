@@ -2,6 +2,7 @@ export type Tier = {
   qty: number;
   price: number;
   percent: number;
+  expiry: Date
 };
 
 export type ProductDiscount = {
@@ -18,6 +19,7 @@ export type ProductDiscount = {
   barCode: string | null;
   salesUnit: string | null;
   salesItemsPerUnit: number;
+  imageUrl: string | null;
 };
 
 export type CreateOrder = {
