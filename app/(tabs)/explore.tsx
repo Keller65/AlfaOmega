@@ -129,6 +129,7 @@ export default function PedidosScreen() {
   const products = useAppStore((s) => s.products);
   const updateQuantity = useAppStore((s) => s.updateQuantity);
   const removeProduct = useAppStore((s) => s.removeProduct);
+  const customerSelected = useAppStore((s) => s.selectedCustomer);
 
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -181,10 +182,16 @@ export default function PedidosScreen() {
   const renderFooter = useCallback((props: BottomSheetFooterProps) => (
     <BottomSheetFooter {...props} bottomInset={0}>
       <View className="bg-white border-t border-gray-200 px-4 py-4">
+        <View className="flex-row justify-between items-center">
+          <Text className='text-base text-gray-700 font-[Poppins-Medium]'>Cliente</Text>
+          <Text className='font-[Poppins-Bold] text-black'>{customerSelected?.cardName}</Text>
+        </View>
+
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-base text-gray-700 font-[Poppins-Medium]">Total</Text>
           <Text className="text-xl font-[Poppins-Bold] text-black">L. {total.toFixed(2)}</Text>
         </View>
+
         <TouchableOpacity
           className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-lg"
           onPress={() => {
