@@ -120,19 +120,13 @@ const CategoryProductScreen = memo(() => {
 
       const newItems = itemsResponse.data.items;
 
-      const productosCombinados = newItems.map((producto: ProductDiscount) => ({
-        ...producto,
-        tiers: producto.tiers || [],
-        hasDiscount: producto.tiers && producto.tiers.length > 0,
-      }));
-
       if (forceRefresh) {
         pagesCacheRef.current = new Map();
       }
-      pagesCacheRef.current.set(currentPage, productosCombinados);
+      pagesCacheRef.current.set(currentPage, newItems);
 
       setItems(prevItems =>
-        loadMore ? [...prevItems, ...productosCombinados] : Array.from(pagesCacheRef.current.values()).flat()
+        loadMore ? [...prevItems, ...newItems] : Array.from(pagesCacheRef.current.values()).flat()
       );
 
       setPage(currentPage);
@@ -270,14 +264,11 @@ const CategoryProductScreen = memo(() => {
         onEndReached={loadMoreItems}
         onEndReachedThreshold={0.2}
         ListFooterComponent={
-          <View>
-            {loadingMore && (
-              <ActivityIndicator size="large" color="#3b82f6" />
-            )}
-            {!loadingMore && items.length > 0 && items.length % PAGE_SIZE !== 0 && (
-              <Text className="text-gray-400 text-center">No hay más productos para mostrar</Text>
-            )}
-          </View>
+          loadingMore ? (
+            <View className="py-4">
+              <ActivityIndicator size="small" color="#3b82f6" />
+            </View>
+          ) : null
         }
         refreshControl={
           <RefreshControl
