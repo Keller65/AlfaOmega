@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Alert, Platform } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import '../../global.css'
+import '../../global.css';
 
+// Configuración global de notificaciones
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    priority: Notifications.AndroidNotificationPriority.HIGH,
+    sound: 'default',
+    vibrate: true,
+    visibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   }),
 });
 
@@ -19,18 +23,26 @@ export default function App() {
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
 
   useEffect(() => {
+    // Solicitar permisos y obtener token
     registerForPushNotificationsAsync()
-      .then(token => setExpoPushToken(token))
-      .catch(console.error);
+      .then(token => {
+        if (token) {
+          setExpoPushToken(token);
+          console.log('Expo Push Token:', token);
+        }
+      })
+      .catch(error => {
+        console.error('Error al registrar notificaciones:', error);
+      });
 
-    // Escuchar notificaciones cuando llegan
+    // Escuchar notificación entrante
     const subscription1 = Notifications.addNotificationReceivedListener(notification => {
       setNotification(notification);
     });
 
-    // Escuchar interacción con la notificación
+    // Escuchar respuesta a la notificación
     const subscription2 = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notificación interactuada:', response);
+      console.log('Interacción con la notificación:', response);
     });
 
     return () => {
@@ -39,9 +51,10 @@ export default function App() {
     };
   }, []);
 
+  // Función para registrar y obtener token de notificación Expo
   async function registerForPushNotificationsAsync(): Promise<string | null> {
     if (!Device.isDevice) {
-      Alert.alert('Debes usar un dispositivo físico para recibir notificaciones');
+      Alert.alert('Solo dispositivos físicos pueden recibir notificaciones');
       return null;
     }
 
@@ -54,30 +67,25 @@ export default function App() {
     }
 
     if (finalStatus !== 'granted') {
-      Alert.alert('No se concedieron permisos para notificaciones');
+      Alert.alert('Permiso de notificaciones no concedido');
       return null;
     }
 
-    try {
-      const tokenData = await Notifications.getDevicePushTokenAsync();
-      console.log('Token FCM:', tokenData.data);
-      return tokenData.data;
-    } catch (error) {
-      Alert.alert('Error obteniendo token', `${error}`);
-      return null;
-    }
+    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    return token;
   }
 
   return (
-    <View className='flex-1 justify-center items-center bg-white p-6'>
-      <Text>Token FCM:</Text>
-      <Text selectable>{expoPushToken ?? 'Obteniendo token...'}</Text>
+    <View className="flex-1 justify-center items-center bg-white p-6">
+      <Text className="text-lg font-semibold mb-2">Expo Push Token:</Text>
+      <Text selectable className="text-center">{expoPushToken ?? 'Obteniendo token...'}</Text>
+
       {notification && (
-        <>
-          <Text style={{ marginTop: 20 }}>Notificación recibida:</Text>
-          <Text>Título: {notification.request.content.title}</Text>
-          <Text>Mensaje: {notification.request.content.body}</Text>
-        </>
+        <View className="mt-6">
+          <Text className="font-semibold">Notificación recibida:</Text>
+          <Text>Título: {notification.request.content.title ?? 'Sin título'}</Text>
+          <Text>Mensaje: {notification.request.content.body ?? 'Sin contenido'}</Text>
+        </View>
       )}
     </View>
   );

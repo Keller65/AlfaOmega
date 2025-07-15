@@ -6,7 +6,6 @@ export type Tier = {
 };
 
 export type ProductDiscount = {
-  tiers: Tier[];
   itemCode: string;
   itemName: string;
   groupCode: number;
@@ -20,6 +19,8 @@ export type ProductDiscount = {
   salesUnit: string | null;
   salesItemsPerUnit: number;
   imageUrl: string | null;
+  taxType: "EXE" | "INA";
+  tiers: Tier[];
 };
 
 export type CreateOrder = {

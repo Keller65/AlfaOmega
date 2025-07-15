@@ -116,23 +116,15 @@ const CategoryProductScreen = memo(() => {
         url += `&groupCode=${groupCode}`;
       }
 
-      const [itemsResponse, discountsResponse] = await Promise.all([
-        axios.get(url, { headers }),
-        axios.get('http://200.115.188.54:4325/sap/items/discounted', { headers })
-      ]);
+      const itemsResponse = await axios.get(url, { headers });
 
       const newItems = itemsResponse.data.items;
-      const dataDescuento = Array.isArray(discountsResponse.data) ? discountsResponse.data : [];
-      const descuentoMap = new Map(dataDescuento.map((d: ProductDiscount) => [d.itemCode, d]));
 
-      const productosCombinados = newItems.map((producto: ProductDiscount) => {
-        const descuento = descuentoMap.get(producto.itemCode);
-        return {
-          ...producto,
-          tiers: descuento?.tiers || [],
-          hasDiscount: !!descuento,
-        };
-      });
+      const productosCombinados = newItems.map((producto: ProductDiscount) => ({
+        ...producto,
+        tiers: producto.tiers || [],
+        hasDiscount: producto.tiers && producto.tiers.length > 0,
+      }));
 
       if (forceRefresh) {
         pagesCacheRef.current = new Map();
@@ -146,7 +138,6 @@ const CategoryProductScreen = memo(() => {
       setPage(currentPage);
       setTotalItems(itemsResponse.data.total);
 
-      console.log("Productos en descuento:", discountsResponse.data);
     } catch (err: any) {
       setError(err?.message || 'Error inesperado');
       if (!loadMore) setItems([]);
@@ -186,7 +177,6 @@ const CategoryProductScreen = memo(() => {
   }, [fetchProducts]);
 
   const loadMoreItems = useCallback(() => {
-    // Solo cargar más si no está cargando y hay más productos por cargar
     if (!loadingMore && items.length < totalItems) {
       setPage(prev => prev + 1);
     }
@@ -212,6 +202,8 @@ const CategoryProductScreen = memo(() => {
     if (!selectedItem || quantity <= 0) return;
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
     const productData = { ...selectedItem, quantity, unitPrice };
+
+    console.log("Producto agregado al carrito:", productData);
 
     if (itemInCart) {
       Alert.alert(
@@ -324,15 +316,15 @@ const CategoryProductScreen = memo(() => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text className="text-[20px] font-[Poppins-Bold] mb-1 tracking-[-0.3px]">{selectedItem.itemName}</Text>
+                <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px] leading-6">{selectedItem.itemName}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.itemCode}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
                 {selectedItem.tiers?.length > 0 && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                    <Text className="font-semibold mb-1">Precios por cantidad:</Text>
+                    <Text className="font-[Poppins-SemiBold] tracking-[-0.3px] mb-1">Precios por cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <Text key={index} className="text-sm text-gray-700">
+                      <Text key={index} className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
                         Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
                       </Text>
                     ))}
