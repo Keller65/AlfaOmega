@@ -144,7 +144,7 @@ const CategoryProductScreen = memo(() => {
 
   useEffect(() => {
     // Resetear cache y estado cuando cambian filtros 
-    pagesCacheRef.current = new Map();
+    // pagesCacheRef.current = new Map(); // esta line cusa el problema de reenderizado infinito
     setItems([]);
     setPage(1);
     setLoading(true);
@@ -264,7 +264,7 @@ const CategoryProductScreen = memo(() => {
         onEndReached={loadMoreItems}
         onEndReachedThreshold={0.2}
         ListFooterComponent={
-          loadingMore ? (
+          loadingMore !== false ? (
             <View className="py-4">
               <ActivityIndicator size="small" color="#3b82f6" />
             </View>
@@ -283,7 +283,7 @@ const CategoryProductScreen = memo(() => {
           paddingBottom: 20,
         }}
         drawDistance={500}
-        overrideItemLayout={(layout, item) => {
+        overrideItemLayout={(layout) => {
           layout.size = 100;
         }}
       />
