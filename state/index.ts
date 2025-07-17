@@ -7,6 +7,12 @@ type CartItem = ProductDiscount & {
   quantity: number;
   unitPrice: number;
   total: number;
+  tiers: {
+    qty: number;
+    price: number;
+    percent: number;
+    expiry: string;
+  }[];
 };
 
 interface Customer {

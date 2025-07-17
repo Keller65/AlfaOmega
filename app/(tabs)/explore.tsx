@@ -7,16 +7,23 @@ import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
 import TrashIcon from '@/assets/icons/TrashIcon';
 import { useAppStore } from '@/state/index';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps, } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import '../../global.css';
+import { useAuth } from '@/context/auth';
+import axios from 'axios';
 
 interface CartItemType {
   itemCode: string;
   itemName: string;
   unitPrice: number;
   quantity: number;
-  total: number;
+  tiers: {
+    qty: number;
+    price: number;
+    percent: number;
+    expiry: string;
+  }[];
 }
 
 interface CartItemProps {
@@ -29,11 +36,19 @@ const snapPoints: string[] = ['60%', '85%'];
 
 const areEqual = (prev: CartItemProps, next: CartItemProps) =>
   prev.item.itemCode === next.item.itemCode &&
-  prev.item.quantity === next.item.quantity &&
-  prev.item.total === next.item.total;
+  prev.item.quantity === next.item.quantity;
 
 const CartItem = memo(({ item, onUpdateQty, onRemove }: CartItemProps) => {
   const removeRequested = useRef(false);
+
+  const effectivePrice = useMemo(() => {
+    const applicableTiers = item.tiers
+      ?.filter(t => item.quantity >= t.qty)
+      .sort((a, b) => b.qty - a.qty);
+    return applicableTiers?.[0]?.price ?? item.unitPrice;
+  }, [item.tiers, item.quantity]);
+
+  const subtotal = useMemo(() => effectivePrice * item.quantity, [effectivePrice, item.quantity]);
 
   const handleChange = useCallback((type: 'add' | 'sub') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -55,7 +70,9 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: CartItemProps) => {
         </View>
 
         <View className="flex-1">
-          <Text className="font-[Poppins-SemiBold] tracking-[-0.3px]" numberOfLines={2}>{item.itemName.toLowerCase()}</Text>
+          <Text className="font-[Poppins-SemiBold] tracking-[-0.3px]" numberOfLines={2}>
+            {item.itemName.toLowerCase()}
+          </Text>
 
           <View className="flex-row items-center my-2 gap-2">
             <TouchableOpacity
@@ -85,8 +102,12 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: CartItemProps) => {
             </TouchableOpacity>
           </View>
 
-          <Text className="text-sm font-[Poppins-Regular] text-gray-600">Precio: L. {item.unitPrice.toFixed(2)}</Text>
-          <Text className="text-sm font-[Poppins-SemiBold] mt-1">Subtotal: L. {item.total.toFixed(2)}</Text>
+          <Text className="text-sm font-[Poppins-Regular] text-gray-600">
+            Precio: L. {effectivePrice.toFixed(2)}
+          </Text>
+          <Text className="text-sm font-[Poppins-SemiBold] mt-1">
+            Subtotal: L. {subtotal.toFixed(2)}
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -130,11 +151,72 @@ export default function PedidosScreen() {
   const updateQuantity = useAppStore((s) => s.updateQuantity);
   const removeProduct = useAppStore((s) => s.removeProduct);
   const customerSelected = useAppStore((s) => s.selectedCustomer);
-
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const { user } = useAuth();
+  const token = user?.token || '';
+
+  const handleSubmitOrder = useCallback(async () => {
+    if (!customerSelected || products.length === 0) {
+      Alert.alert('Error', 'Faltan datos para enviar el pedido.');
+      return;
+    }
+
+    try {
+      const now = new Date().toISOString();
+
+      const lines = products.map(p => {
+        const applicableTiers = p.tiers
+          ?.filter(t => p.quantity >= t.qty)
+          .sort((a, b) => b.qty - a.qty);
+        const price = applicableTiers?.[0]?.price ?? p.unitPrice;
+
+        return {
+          itemCode: p.itemCode,
+          quantity: p.quantity,
+          lineTotal: p.quantity * price,
+        };
+      });
+
+      const payload = {
+        cardCode: customerSelected.cardCode,
+        docDate: now,
+        docDueDate: now,
+        comments: 'Pedido desde app móvil',
+        lines,
+      };
+
+      await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      Alert.alert('Éxito', 'Pedido enviado correctamente.');
+      closeCart();
+    } catch (err: any) { // Use 'any' for err if you're not strictly typing axios errors
+      console.error("Error submitting order:", err.message);
+      if (axios.isAxiosError(err)) {
+        console.error("Axios error details:", err.response?.status, err.response?.data);
+        if (err.response?.status === 404) {
+          Alert.alert('Error', 'No se encontró la ruta del servidor (Error 404). Por favor, verifica la dirección de la API.');
+        } else {
+          Alert.alert('Error', `No se pudo enviar el pedido. Código: ${err.response?.status || 'Desconocido'}. Mensaje: ${err.response?.data?.message || 'Intenta nuevamente.'}`);
+        }
+      } else {
+        Alert.alert('Error', 'No se pudo enviar el pedido. Intenta nuevamente.');
+      }
+    }
+  }, [products, customerSelected, token]);
 
   const total = useMemo(() => {
-    return products.reduce((sum, item) => sum + item.total, 0);
+    return products.reduce((sum, item) => {
+      const applicableTiers = item.tiers
+        ?.filter(t => item.quantity >= t.qty)
+        .sort((a, b) => b.qty - a.qty);
+      const price = applicableTiers?.[0]?.price ?? item.unitPrice;
+      return sum + item.quantity * price;
+    }, 0);
   }, [products]);
 
   const openCart = useCallback(() => {
@@ -194,18 +276,14 @@ export default function PedidosScreen() {
 
         <TouchableOpacity
           className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-lg"
-          onPress={() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            console.log('Realizar pedido', Date());
-            closeCart();
-          }}
+          onPress={handleSubmitOrder} // Call handleSubmitOrder directly
         >
           <CartIcon color="white" />
           <Text className="text-white font-[Poppins-Regular] ml-2">Realizar Pedido</Text>
         </TouchableOpacity>
       </View>
     </BottomSheetFooter>
-  ), [total, closeCart]);
+  ), [total, customerSelected?.cardName, handleSubmitOrder]); // Add handleSubmitOrder to dependencies
 
   return (
     <View className="flex-1 bg-white" style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>

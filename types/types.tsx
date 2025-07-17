@@ -2,7 +2,7 @@ export type Tier = {
   qty: number;
   price: number;
   percent: number;
-  expiry: Date
+  expiry: string
 };
 
 export type ProductDiscount = {
@@ -24,15 +24,20 @@ export type ProductDiscount = {
 };
 
 export type CreateOrder = {
-  cardCode: string;
-  docDate: Date,
-  docDueDate: Date,
+  cardCode: string,
+  docDate: string,
+  docDueDate: string,
+  comments: string,
   lines: [
     {
-      itemCode: string;
-      quantity: number | string;
-      priceAfterVAT: number | string;
-      warehouseCode: string;
+      itemCode: string,
+      quantity: number,
+      lineTotal: number
+    },
+    {
+      itemCode: string,
+      quantity: number,
+      lineTotal: number
     }
   ]
 }
