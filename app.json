@@ -8,11 +8,6 @@
     "scheme": "alfaomega",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "expo": {
-      "web": {
-        "bundler": "metro"
-      }
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -28,7 +23,6 @@
         "android.permission.POST_NOTIFICATIONS"
       ],
       "googleServicesFile": "./android/app/google-services.json",
-      "useNextNotificationsApi": true,
       "package": "com.aerley_adkins.alfaandomega"
     },
     "web": {
@@ -65,12 +59,5 @@
       }
     },
     "owner": "aerley_adkins"
-  },
-  "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      }
-    }
   }
 }
