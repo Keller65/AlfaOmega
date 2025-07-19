@@ -22,7 +22,6 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "googleServicesFile": "./android/app/google-services.json",
       "package": "com.aerley_adkins.alfaandomega"
     },
     "web": {
