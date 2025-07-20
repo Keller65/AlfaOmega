@@ -307,7 +307,7 @@ const CategoryProductScreen = memo(() => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px] leading-6">{selectedItem.itemName}</Text>
+                <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px]">{selectedItem.itemName}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.itemCode}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
@@ -345,7 +345,7 @@ const CategoryProductScreen = memo(() => {
                   </View>
                 </View>
 
-                <TouchableOpacity className="mt-4 bg-blue-600 rounded-lg py-3 items-center" onPress={handleAddToCart}>
+                <TouchableOpacity className="mt-4 bg-black rounded-full py-3 items-center justify-center h-[50px]" onPress={handleAddToCart}>
                   <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
                 </TouchableOpacity>
                 <Text className="text-xs text-gray-500 mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>

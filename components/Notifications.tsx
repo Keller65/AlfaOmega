@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MaterialIcons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 const NotificationsToggle = () => {
   const [enabled, setEnabled] = useState(false);
@@ -21,9 +21,9 @@ const NotificationsToggle = () => {
   };
 
   return (
-    <View className="bg-white rounded-xl shadow-md p-5 flex-row items-center justify-between">
+    <View className="bg-white rounded-xl p-5 flex-row items-center justify-between">
       <View className="flex-row items-center space-x-4 gap-3">
-        <MaterialIcons name="notifications" size={36} color={iconColor} />
+        <Ionicons name="notifications" size={36} color="black" />
         <View>
           <Text className="text-lg font-semibold text-gray-900">Notificaciones</Text>
           <Text className="text-gray-500 text-sm">Activa o desactiva las notificaciones</Text>

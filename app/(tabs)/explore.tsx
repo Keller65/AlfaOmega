@@ -194,14 +194,16 @@ export default function PedidosScreen() {
       });
 
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
-    } catch (err: any) { // Use 'any' for err if you're not strictly typing axios errors
-      console.error("Error submitting order:", err.message);
+    } catch (err: any) {
+      console.error("Error al enviar la orden:", err.message);
       if (axios.isAxiosError(err)) {
-        console.error("Axios error details:", err.response?.status, err.response?.data);
+        console.error("Detalles del error de Axios:", err.response?.status, err.response?.data);
         if (err.response?.status === 404) {
           Alert.alert('Error', 'No se encontró la ruta del servidor (Error 404). Por favor, verifica la dirección de la API.');
         } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert('Error', `No se pudo enviar el pedido. Código: ${err.response?.status || 'Desconocido'}. Mensaje: ${err.response?.data?.message || 'Intenta nuevamente.'}`);
         }
       } else {
@@ -276,15 +278,15 @@ export default function PedidosScreen() {
         </View>
 
         <TouchableOpacity
-          className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-lg"
-          onPress={handleSubmitOrder} // Call handleSubmitOrder directly
+          className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-full"
+          onPress={handleSubmitOrder}
         >
           <CartIcon color="white" />
           <Text className="text-white font-[Poppins-Regular] ml-2">Realizar Pedido</Text>
         </TouchableOpacity>
       </View>
     </BottomSheetFooter>
-  ), [total, customerSelected?.cardName, handleSubmitOrder]); // Add handleSubmitOrder to dependencies
+  ), [total, customerSelected?.cardName, handleSubmitOrder]);
 
   return (
     <View className="flex-1 bg-white" style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>

@@ -160,7 +160,7 @@ const ClientScreen = memo(() => {
           value={search}
           onChangeText={setSearch}
           placeholder="Buscar por nombre, código o RTN"
-          className="border border-gray-300 rounded-full px-6 py-3 mb-2 text-base"
+          className="border border-gray-300 rounded-full px-6 py-3 mb-2 text-base font-[Poppins-Regular] text-black"
           autoCapitalize="none"
           autoCorrect={false}
         />

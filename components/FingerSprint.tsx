@@ -33,9 +33,9 @@ const BiometricToggle = () => {
   };
 
   return (
-    <View className="bg-white rounded-xl shadow-md p-5 flex-row items-center justify-between">
+    <View className="bg-white rounded-xl p-5 flex-row items-center justify-between">
       <View className="flex-row items-center space-x-4 gap-3">
-        <MaterialIcons name="fingerprint" size={36} color="#2563EB" />
+        <MaterialIcons name="fingerprint" size={36} color="#000" />
         <View>
           <Text className="text-lg font-semibold text-gray-900">
             Autenticación biométrica
@@ -45,7 +45,7 @@ const BiometricToggle = () => {
           </Text>
         </View>
       </View>
-      
+
       <Switch
         trackColor={{ false: '#9ca3af', true: '#2563EB' }}
         thumbColor={enabled ? '#1D4ED8' : '#f4f3f4'}
