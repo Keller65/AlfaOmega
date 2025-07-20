@@ -1,12 +1,10 @@
 import { Tabs } from 'expo-router';
 import ProtectedLayout from '../ProtectedLayout';
-import React from 'react';
 import { Platform } from 'react-native';
 
 import HomeIcon from '@/assets/icons/HomeIcon';
 import InvoicesIcon from '@/assets/icons/InvoicesIcon';
 import SettingsIcon from '@/assets/icons/SettingsIcon';
-import CartIcon from '@/assets/icons/CartIcon';
 import OrderIcon from '@/assets/icons/OrdeIcon'
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';

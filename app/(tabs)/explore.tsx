@@ -6,12 +6,13 @@ import PlusIcon from '@/assets/icons/PlusIcon';
 import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
 import TrashIcon from '@/assets/icons/TrashIcon';
+import InvoiceCard from '@/components/InvoiceCard/InvoiceCard';
 import { useAppStore } from '@/state/index';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps, } from '@gorhom/bottom-sheet';
-import * as Haptics from 'expo-haptics';
-import '../../global.css';
 import { useAuth } from '@/context/auth';
 import axios from 'axios';
+import * as Haptics from 'expo-haptics';
+import '../../global.css';
 
 interface CartItemType {
   itemCode: string;
@@ -307,6 +308,8 @@ export default function PedidosScreen() {
         </TouchableOpacity>
       </View>
 
+      <InvoiceCard />
+
       <BottomSheetModal
         ref={bottomSheetRef}
         index={0}
@@ -337,7 +340,7 @@ export default function PedidosScreen() {
               initialNumToRender={5}
               maxToRenderPerBatch={5}
               windowSize={10}
-              contentContainerStyle={{ paddingBottom: 16 }}
+              contentContainerStyle={{ paddingBottom: 30 }}
               ListHeaderComponent={<View className="pt-2" />}
             />
           )}
