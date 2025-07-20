@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState, memo } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert, FlatList, TextInput } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
 import ClientIcon from '../assets/icons/ClientIcon';
 import { useAuth } from '@/context/auth';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { useAppStore } from '@/state/index';
 import { Customer } from '@/types/types';
+import { FlashList } from '@shopify/flash-list';
 
 const ClientScreen = memo(() => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -92,25 +93,24 @@ const ClientScreen = memo(() => {
   const renderCustomerItem = useCallback(
     ({ item: customer }: { item: Customer }) => (
       <TouchableOpacity
-        key={customer.cardCode}
         onPress={() => handleCustomerPress(customer)}
-        className="flex-row items-center gap-3 px-4"
+        className="flex-row items-center gap-3 px-4 my-2"
       >
-        <View className="bg-yellow-300 w-[50px] h-[50px] items-center justify-center rounded-full">
+        <View className="bg-[#fcde41] w-[50px] h-[50px] items-center justify-center rounded-full">
           <ClientIcon size={24} color="#000" />
         </View>
 
         <View className="flex-1 justify-center gap-2">
-          <Text className="font-[Poppins-SemiBold] text-lg text-black lowercase tracking-tight">
+          <Text className="font-[Poppins-SemiBold] text-lg text-black tracking-[-0.3px] leading-4">
             {customer.cardName}
           </Text>
 
           <View className="flex-row gap-2">
-            <Text className="text-gray-600 font-semibold">
-              Código: <Text className="font-normal">{customer.cardCode}</Text>
+            <Text className="text-gray-600 font-[Poppins-SemiBold] tracking-[-0.3px]">
+              Código: <Text className="font-[Poppins-Regular] tracking-[-0.3px]">{customer.cardCode}</Text>
             </Text>
-            <Text className="text-gray-600 font-semibold">
-              RTN: <Text className="font-normal">{customer.federalTaxID}</Text>
+            <Text className="text-gray-600 font-[Poppins-SemiBold] tracking-[-0.3px]">
+              RTN: <Text className="font-[Poppins-Regular] tracking-[-0.3px]">{customer.federalTaxID}</Text>
             </Text>
           </View>
         </View>
@@ -165,14 +165,12 @@ const ClientScreen = memo(() => {
           autoCorrect={false}
         />
       </View>
-      <FlatList
+
+      <FlashList
         data={filteredCustomers}
         renderItem={renderCustomerItem}
         keyExtractor={(item) => item.cardCode}
-        contentContainerStyle={{ paddingVertical: 24, rowGap: 24 }}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={21}
+        estimatedItemSize={80}
         ListEmptyComponent={
           <View className="justify-center items-center py-10">
             <Text className="text-gray-500 text-base font-normal text-center">No se encontraron clientes con ese criterio.</Text>
