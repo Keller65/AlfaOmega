@@ -116,7 +116,7 @@ export default function App() {
           />
         )}
       >
-        <BottomSheetView className="flex-1 px-6 pt-6 pb-0">
+        <BottomSheetView className="flex-1 px-6 pt-6 pb-6">
           <View className="flex-1 justify-between">
             <View>
               <Text className="text-black text-2xl font-semibold font-[Poppins-SemiBold] tracking-[-0.3px] text-center">¡Bienvenido {user?.fullName}!</Text>
