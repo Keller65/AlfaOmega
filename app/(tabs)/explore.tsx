@@ -1,18 +1,19 @@
-import { useRef, useMemo, useCallback, memo } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useRef, useMemo, useCallback, memo, useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import PlusIcon from '@/assets/icons/PlusIcon';
 import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
 import TrashIcon from '@/assets/icons/TrashIcon';
-import InvoiceCard from '@/components/InvoiceCard/InvoiceCard';
 import { useAppStore } from '@/state/index';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps, } from '@gorhom/bottom-sheet';
 import { useAuth } from '@/context/auth';
 import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import '../../global.css';
+import { OrderDataType } from '@/types/types';
+import { MaterialIcons, Feather, FontAwesome6, Ionicons } from '@expo/vector-icons';
 
 interface CartItemType {
   itemCode: string;
@@ -152,9 +153,38 @@ export default function PedidosScreen() {
   const updateQuantity = useAppStore((s) => s.updateQuantity);
   const removeProduct = useAppStore((s) => s.removeProduct);
   const customerSelected = useAppStore((s) => s.selectedCustomer);
+  const setLastOrderDocEntry = useAppStore((s) => s.setLastOrderDocEntry);
+  const docEntry = useAppStore((s) => s.lastOrderDocEntry);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { user } = useAuth();
   const token = user?.token || '';
+  const [orderData, setOrderData] = useState<OrderDataType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchOrders = useCallback(async (docEntryToFetch: string | number) => {
+    if (!docEntryToFetch) {
+      setOrderData(null);
+      return;
+    }
+    // Usa isRefreshing aquí
+    setIsRefreshing(true);
+    try {
+      const res = await axios.get(`http://200.115.188.54:4325/sap/quotations/${docEntryToFetch}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      setOrderData(res.data as OrderDataType);
+    } catch (err) {
+      console.error('Error al obtener órdenes:', err);
+      Alert.alert('Error', 'No se pudieron obtener las órdenes. Intenta nuevamente.');
+      setOrderData(null);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [token]);
 
   const handleSubmitOrder = useCallback(async () => {
     if (!customerSelected || products.length === 0) {
@@ -162,7 +192,6 @@ export default function PedidosScreen() {
       return;
     }
 
-    // Fecha local de Honduras en formato YYYY-MM-DD
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Tegucigalpa',
@@ -197,9 +226,8 @@ export default function PedidosScreen() {
       lines,
     };
 
-    console.log('Payload enviado:', JSON.stringify(payload, null, 2));
-
     try {
+      setIsLoading(true);
       const res = await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -208,13 +236,16 @@ export default function PedidosScreen() {
       });
 
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
-      console.log('Respuesta del servidor:', res.data.docEntry);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
+
+      if (res.data.docEntry) {
+        setLastOrderDocEntry(res.data.docEntry);
+      }
+
+      await fetchOrders(res.data.docEntry);
     } catch (err: any) {
-      console.error("Error al enviar la orden:", err.message);
       if (axios.isAxiosError(err)) {
-        console.error("Detalles del error de Axios:", err.response?.status, err.response?.data);
         if (err.response?.status === 404) {
           Alert.alert('Error', 'No se encontró la ruta del servidor (Error 404). Por favor, verifica la dirección de la API.');
         } else {
@@ -224,9 +255,10 @@ export default function PedidosScreen() {
       } else {
         Alert.alert('Error', 'No se pudo enviar el pedido. Intenta nuevamente.');
       }
+    } finally {
+      setIsLoading(false);
     }
-  }, [products, customerSelected, token]);
-
+  }, [products, customerSelected, token, fetchOrders, setLastOrderDocEntry]);
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => {
@@ -304,6 +336,18 @@ export default function PedidosScreen() {
     </BottomSheetFooter>
   ), [total, customerSelected?.cardName, handleSubmitOrder]);
 
+  const handleRefresh = useCallback(() => {
+    if (docEntry) {
+      fetchOrders(docEntry);
+    }
+  }, [docEntry, fetchOrders]);
+
+  useEffect(() => {
+    if (docEntry) {
+      fetchOrders(docEntry);
+    }
+  }, [docEntry, fetchOrders]);
+
   return (
     <View className="flex-1 bg-white" style={{ paddingTop: Constants.statusBarHeight, paddingHorizontal: 10 }}>
       <View className="absolute bottom-8 right-8 gap-3 items-end z-10">
@@ -326,7 +370,89 @@ export default function PedidosScreen() {
         </TouchableOpacity>
       </View>
 
-      <InvoiceCard />
+      {orderData ? (
+        <ScrollView
+          className="flex-1 mt-4"
+          contentContainerStyle={{ flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          }
+        >
+          <View className='w-full'>
+            <View className="bg-white rounded-2xl p-4 border border-gray-200 w-full shadow-sm">
+              {/* Encabezado */}
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center space-x-2">
+                  <MaterialIcons name="local-shipping" size={20} color="#555" />
+                  <Text className="text-sm text-gray-500">
+                    Pedido <Text className="font-[Poppins-Medium] text-gray-500">#{orderData.docEntry}</Text>
+                  </Text>
+                </View>
+                <Text className="text-xs text-orange-600 font-[Poppins-Medium] bg-orange-100 px-2 py-1 rounded-full">
+                  En Proceso
+                </Text>
+              </View>
+
+              {/* Cliente */}
+              <View className="flex-row items-center mb-2 space-x-2 gap-3">
+                <Ionicons name="person-outline" size={24} color="#6B7280" />
+                <View>
+                  <Text className="text-sm text-gray-500">Cliente</Text>
+                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">{orderData.cardName}</Text>
+                </View>
+              </View>
+
+              {/* Fecha */}
+              <View className="flex-row items-center mb-2 space-x-2 gap-3">
+                <Feather name="calendar" size={24} color="#6B7280" />
+                <View>
+                  <Text className="text-sm text-gray-500">Fecha</Text>
+                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">{orderData.docDate}</Text>
+                </View>
+              </View>
+
+              {/* Total */}
+              <View className="flex-row items-center mb-4 space-x-2 gap-3">
+                <FontAwesome6 name="file-invoice" size={24} color="#6B7280" />
+                <View>
+                  <Text className="text-sm text-gray-500">Total</Text>
+                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">L. {orderData.vatSum}</Text>
+                </View>
+              </View>
+
+              {/* Botón */}
+              <TouchableOpacity
+                onPress={() => router.push({
+                  pathname: '/order',
+                  params: {
+                    OrderDetails: orderData.docTotal
+                  }
+                })}
+                className="w-full bg-black py-3 rounded-full items-center justify-center h-[50px]">
+                <Text className="text-sm font-[Poppins-SemiBold] text-white">Ver más detalles</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      ) : (
+        <View className="flex-1 justify-center items-center bg-white">
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+          />
+          <Text className="text-lg text-gray-500">No hay pedidos cargados.</Text>
+        </View>
+      )}
+
+      {isLoading && (
+        <View className="absolute inset-0 z-20 bg-white/80 justify-center items-center">
+          <ActivityIndicator size="large" color="#0000ff" />
+          <Text className="mt-4 text-gray-500">Enviando pedido...</Text>
+        </View>
+      )}
 
       <BottomSheetModal
         ref={bottomSheetRef}

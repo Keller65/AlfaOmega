@@ -65,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="client" options={{ headerShown: true, headerTitle: 'Seleccionar Cliente' }} />
+            <Stack.Screen name="order" options={{ headerShown: true, headerTitle: 'Detalles del Pedido' }} />
 
             <Stack.Screen name="shop"
               options={{
