@@ -32,12 +32,10 @@ export type CreateOrder = {
     {
       itemCode: string,
       quantity: number,
-      lineTotal: number
-    },
-    {
-      itemCode: string,
-      quantity: number,
-      lineTotal: number
+      lineTotal: number,
+      priceList: number,
+      priceAfterVAT: number,
+      taxCode: string,
     }
   ]
 }
@@ -54,4 +52,29 @@ export interface CustomersResponse {
   page: number;
   pageSize: number;
   total: number;
+}
+
+export interface OrderLineType {
+  itemCode: string;
+  itemDescription: string;
+  barCode: string;
+  quantity: number;
+  priceAfterVAT: number;
+  taxCode: string;
+  lineTotal: number;
+}
+
+export interface OrderDataType {
+  docEntry: number;
+  docNum: number;
+  cardCode: string;
+  cardName: string;
+  federalTaxID: string;
+  address: string;
+  docDate: string;
+  vatSum: number;
+  docTotal: number;
+  comments: string;
+  salesPersonCode: number;
+  lines: OrderLineType[];
 }

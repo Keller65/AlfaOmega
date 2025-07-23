@@ -162,31 +162,45 @@ export default function PedidosScreen() {
       return;
     }
 
-    try {
-      const now = new Date().toISOString();
+    // Fecha local de Honduras en formato YYYY-MM-DD
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Tegucigalpa',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
 
-      const lines = products.map(p => {
-        const applicableTiers = p.tiers
-          ?.filter(t => p.quantity >= t.qty)
-          .sort((a, b) => b.qty - a.qty);
-        const price = applicableTiers?.[0]?.price ?? p.unitPrice;
+    const [{ value: year }, , { value: month }, , { value: day }] = formatter.formatToParts(now);
+    const hondurasDate = `${year}-${month}-${day}`;
 
-        return {
-          itemCode: p.itemCode,
-          quantity: p.quantity,
-          lineTotal: p.quantity * price,
-        };
-      });
+    const lines = products.map(p => {
+      const applicableTiers = p.tiers
+        ?.filter(t => p.quantity >= t.qty)
+        .sort((a, b) => b.qty - a.qty);
+      const price = applicableTiers?.[0]?.price ?? p.unitPrice;
 
-      const payload = {
-        cardCode: customerSelected.cardCode,
-        docDate: now,
-        docDueDate: now,
-        comments: 'Pedido desde app móvil',
-        lines,
+      return {
+        itemCode: p.itemCode,
+        quantity: p.quantity,
+        priceList: user?.salesPersonCode,
+        priceAfterVAT: price,
+        taxCode: p.taxType,
       };
+    });
 
-      await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
+    const payload = {
+      cardCode: customerSelected.cardCode,
+      docDate: hondurasDate,
+      docDueDate: hondurasDate,
+      comments: 'Pedido desde app móvil',
+      lines,
+    };
+
+    console.log('Payload enviado:', JSON.stringify(payload, null, 2));
+
+    try {
+      const res = await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -194,6 +208,7 @@ export default function PedidosScreen() {
       });
 
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
+      console.log('Respuesta del servidor:', res.data.docEntry);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
     } catch (err: any) {
@@ -211,6 +226,7 @@ export default function PedidosScreen() {
       }
     }
   }, [products, customerSelected, token]);
+
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => {

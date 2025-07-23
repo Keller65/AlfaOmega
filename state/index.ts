@@ -40,6 +40,11 @@ interface AppStoreState {
   debouncedSearchText: string;
   setRawSearchText: (text: string) => void;
   setDebouncedSearchText: (text: string) => void;
+
+  // Nuevo campo para guardar el docEntry
+  lastOrderDocEntry: number | null;
+  setLastOrderDocEntry: (docEntry: number) => void;
+  clearLastOrderDocEntry: () => void;
 }
 
 export const useAppStore = create<AppStoreState>()(
@@ -50,6 +55,7 @@ export const useAppStore = create<AppStoreState>()(
       allProductsCache: [],
       rawSearchText: '',
       debouncedSearchText: '',
+      lastOrderDocEntry: null,
 
       addProduct: (productToAdd) => {
         const products = get().products;
@@ -120,6 +126,9 @@ export const useAppStore = create<AppStoreState>()(
 
       setRawSearchText: (text) => set({ rawSearchText: text }),
       setDebouncedSearchText: (text) => set({ debouncedSearchText: text }),
+
+      setLastOrderDocEntry: (docEntry: number) => set({ lastOrderDocEntry: docEntry }),
+      clearLastOrderDocEntry: () => set({ lastOrderDocEntry: null }),
     }),
     {
       name: 'app-store',
