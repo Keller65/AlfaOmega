@@ -419,7 +419,7 @@ export default function PedidosScreen() {
                 <FontAwesome6 name="file-invoice" size={24} color="#6B7280" />
                 <View>
                   <Text className="text-sm text-gray-500">Total</Text>
-                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">L. {orderData.vatSum}</Text>
+                  <Text className="text-base font-[Poppins-Medium] text-gray-800 leading-4">L. {orderData.docTotal}</Text>
                 </View>
               </View>
 
@@ -428,7 +428,7 @@ export default function PedidosScreen() {
                 onPress={() => router.push({
                   pathname: '/order',
                   params: {
-                    OrderDetails: orderData.docTotal
+                    OrderDetails: orderData.docEntry
                   }
                 })}
                 className="w-full bg-black py-3 rounded-full items-center justify-center h-[50px]">
