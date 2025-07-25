@@ -44,7 +44,7 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
           >
             {item.itemName.toLowerCase()}
           </Text>
-          <Text className="text-[10px] text-gray-400">COD: {item.itemCode}</Text>
+          <Text className="text-[10px] text-gray-400">COD: {item.barCode}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -223,7 +223,7 @@ const CategoryProductScreen = memo(() => {
   const filteredItems = useMemo(() => {
     const text = debouncedSearchText?.toLowerCase() || '';
     return items.filter(item =>
-      item.itemCode?.toLowerCase().includes(text) ||
+      item.barCode?.toLowerCase().includes(text) ||
       item.itemName?.toLowerCase().includes(text) ||
       item.groupName?.toLowerCase().includes(text)
     );
@@ -308,16 +308,21 @@ const CategoryProductScreen = memo(() => {
                   />
                 </View>
                 <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px]">{selectedItem.itemName}</Text>
-                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.itemCode}</Text>
+                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.barCode}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
                 <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
                 {selectedItem.tiers?.length > 0 && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
                     <Text className="font-[Poppins-SemiBold] tracking-[-0.3px] mb-1">Precios por cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <Text key={index} className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
-                        Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
-                      </Text>
+                      <View>
+                        <Text key={index} className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
+                          Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
+                        </Text>
+                        <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">
+                          {selectedItem.tiers[0].expiry}
+                        </Text>
+                      </View>
                     ))}
                   </View>
                 )}

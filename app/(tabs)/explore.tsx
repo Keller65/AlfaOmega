@@ -108,7 +108,7 @@ const CartItem = memo(({ item, onUpdateQty, onRemove }: CartItemProps) => {
             Precio: L. {effectivePrice.toFixed(2)}
           </Text>
           <Text className="text-sm font-[Poppins-SemiBold] mt-1">
-            Subtotal: L. {subtotal.toFixed(2)}
+            Total: L. {subtotal.toFixed(2)}
           </Text>
         </View>
 
@@ -212,7 +212,7 @@ export default function PedidosScreen() {
       return {
         itemCode: p.itemCode,
         quantity: p.quantity,
-        priceList: user?.salesPersonCode,
+        priceList: p.unitPrice,
         priceAfterVAT: price,
         taxCode: p.taxType,
       };
@@ -226,6 +226,8 @@ export default function PedidosScreen() {
       lines,
     };
 
+    console.log(payload)
+
     try {
       setIsLoading(true);
       const res = await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
@@ -238,7 +240,7 @@ export default function PedidosScreen() {
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
-      clearCart(); // Llama a clearCart aquí después de un envío exitoso
+      // clearCart(); // Llama a clearCart aquí después de un envío exitoso
 
       if (res.data.docEntry) {
         setLastOrderDocEntry(res.data.docEntry);
