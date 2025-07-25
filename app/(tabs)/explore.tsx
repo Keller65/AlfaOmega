@@ -152,6 +152,7 @@ export default function PedidosScreen() {
   const products = useAppStore((s) => s.products);
   const updateQuantity = useAppStore((s) => s.updateQuantity);
   const removeProduct = useAppStore((s) => s.removeProduct);
+  const clearCart = useAppStore((s) => s.clearCart);
   const customerSelected = useAppStore((s) => s.selectedCustomer);
   const setLastOrderDocEntry = useAppStore((s) => s.setLastOrderDocEntry);
   const docEntry = useAppStore((s) => s.lastOrderDocEntry);
@@ -167,7 +168,6 @@ export default function PedidosScreen() {
       setOrderData(null);
       return;
     }
-    // Usa isRefreshing aquí
     setIsRefreshing(true);
     try {
       const res = await axios.get(`http://200.115.188.54:4325/sap/quotations/${docEntryToFetch}`, {
@@ -238,6 +238,7 @@ export default function PedidosScreen() {
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
+      clearCart(); // Llama a clearCart aquí después de un envío exitoso
 
       if (res.data.docEntry) {
         setLastOrderDocEntry(res.data.docEntry);
@@ -258,7 +259,7 @@ export default function PedidosScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [products, customerSelected, token, fetchOrders, setLastOrderDocEntry]);
+  }, [products, customerSelected, token, fetchOrders, setLastOrderDocEntry, clearCart]);
 
   const total = useMemo(() => {
     return products.reduce((sum, item) => {

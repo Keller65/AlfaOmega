@@ -1,11 +1,4 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
@@ -17,7 +10,7 @@ import Constants from 'expo-constants';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-import { useAuth } from '@/context/auth'; // <-- aquí importas useAuth
+import { useAuth } from '@/context/auth';
 
 import { OrderDataType } from '@/types/types';
 
@@ -28,19 +21,28 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const { user } = useAuth(); // obtenemos el usuario/vendedor
+  const { user } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchOrderDetails = async () => {
       try {
         const response = await axios.get(
           `http://200.115.188.54:4325/sap/quotations/${OrderDetails}`
         );
-        setOrderData(response.data);
+        if (isMounted) {
+          setOrderData(response.data);
+        }
       } catch (error) {
         console.error('Error fetching order details:', error);
+        if (isMounted) {
+          Alert.alert('Error', 'No se pudieron cargar los detalles del pedido.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -49,6 +51,10 @@ const OrderDetails = () => {
     } else {
       setLoading(false);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [OrderDetails]);
 
   const totalItems = useMemo(() => {
@@ -69,8 +75,9 @@ const OrderDetails = () => {
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
             * {
-              font-family: 'Poppins-Regular', sans-serif;
+              font-family: 'Poppins', sans-serif;
               margin: 0;
               padding: 0;
               box-sizing: border-box;
@@ -82,12 +89,21 @@ const OrderDetails = () => {
             }
             h1 {
               font-size: 24px;
-              font-weight: bold;
+              font-weight: 600; /* SemiBold */
               margin-bottom: 16px;
+            }
+            h2 {
+                font-size: 20px;
+                font-weight: 600; /* SemiBold */
+                margin-top: 24px;
+                margin-bottom: 16px;
             }
             .info p {
               margin-bottom: 4px;
               font-size: 14px;
+            }
+            .info p strong {
+                font-weight: 500; /* Medium */
             }
             table {
               width: 100%;
@@ -97,57 +113,103 @@ const OrderDetails = () => {
             }
             th {
               text-align: left;
-              padding: 8px;
-              background-color: #f3f3f3;
+              padding: 8px 0; /* Ajusta el padding para que sea más limpio */
+              font-weight: 500; /* Medium */
+              color: #6B7280; /* gray-500 */
+              text-transform: uppercase;
+              font-size: 12px;
             }
             td {
-              padding: 8px;
-              border-top: 1px solid #eee;
+              padding: 8px 0; /* Ajusta el padding */
+              border-top: 1px solid #F3F4F6; /* gray-100 para líneas sutiles */
+              font-weight: 400; /* Regular */
+            }
+            .product-table td {
+                padding: 12px 0; /* Más espacio para los productos */
+            }
+            .product-table tr:last-child td {
+                border-bottom: none; /* Sin borde en la última fila */
+            }
+            .text-right {
+                text-align: right;
+            }
+            .text-center {
+                text-align: center;
+            }
+            .font-semibold {
+                font-weight: 600; /* SemiBold */
             }
             .total {
               text-align: right;
-              font-weight: bold;
+              font-weight: 700; /* Bold */
               margin-top: 16px;
-              font-size: 16px;
+              font-size: 18px; /* Bigger total */
+            }
+            .subtotal-row {
+                font-weight: 500;
+                border-top: 1px solid #ccc;
+                padding-top: 8px;
+                margin-top: 8px;
+            }
+
+            .header {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                aling-items: center;
             }
           </style>
         </head>
         <body>
-          <h1>Resumen del Pedido</h1>
+          <header class="header">
+            <h1>Resumen del Pedido</h1>
+            <p><strong>Pedido #:</strong> ${orderData.docEntry}</p>
+          </header>
           <div class="info">
             <p><strong>Cliente:</strong> ${orderData.cardName}</p>
             <p><strong>RTN:</strong> ${orderData.federalTaxID ?? 'N/A'}</p>
             <p><strong>Fecha:</strong> ${new Date(orderData.docDate).toLocaleDateString()}</p>
-            <p><strong>Pedido #:</strong> ${orderData.docEntry}</p>
             <p><strong>Vendedor:</strong> ${user?.fullName ?? 'N/A'}</p>
           </div>
-          <table>
+
+          <table class="product-table">
             <thead>
               <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Total</th>
+                <th style="width: 50%; text-align: left;">Producto</th>
+                <th style="width: 15%; text-align: center;">Cant.</th>
+                <th style="width: 15%; text-align: right;">Precio</th>
+                <th style="width: 20%; text-align: right;">Total</th>
               </tr>
             </thead>
             <tbody>
               ${orderData.lines
-                .map(
-                  (item) => `
+        .map(
+          (item) => `
                   <tr>
                     <td>${item.itemDescription}</td>
-                    <td>${item.quantity}</td>
-                    <td>L. ${item.priceAfterVAT.toFixed(2)}</td>
-                    <td>L. ${item.lineTotal.toFixed(2)}</td>
+                    <td class="text-center">${item.quantity}</td>
+                    <td class="text-right">L. ${item.priceAfterVAT.toFixed(2)}</td>
+                    <td class="text-right font-semibold">L. ${item.lineTotal.toFixed(2)}</td>
                   </tr>
                 `
-                )
-                .join('')}
+        )
+        .join('')}
+              <tr class="isv-row">
+                <td colspan="3" class="text-right"><strong>ISV:</strong></td>
+                <td class="text-right font-semibold">L. ${orderData.vatSum.toFixed(2)}</td>
+              </tr>
+              
+              <tr class="subtotal-row">
+                <td colspan="3" class="text-right"><strong>SubTotal:</strong></td>
+                <td class="text-right font-semibold">L. ${(orderData.docTotal - orderData.vatSum).toFixed(2)}</td>
+              </tr>
+
+              <tr class="total-row">
+                <td colspan="3" class="text-right"><strong>Total del Pedido:</strong></td>
+                <td class="text-right font-semibold">L. ${orderData.docTotal.toFixed(2)}</td>
+              </tr>
             </tbody>
           </table>
-          <div class="total">
-            Total: L. ${orderData.docTotal.toFixed(2)}
-          </div>
         </body>
       </html>
     `;
@@ -159,7 +221,7 @@ const OrderDetails = () => {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
           UTI: 'com.adobe.pdf',
-          dialogTitle: 'Compartir Pedido',
+          dialogTitle: `Pedido #${orderData.docEntry} - ${orderData.cardName}`,
         });
       } else {
         Alert.alert('Compartir no disponible', 'Tu dispositivo no permite compartir archivos.');
@@ -175,7 +237,8 @@ const OrderDetails = () => {
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <Text>Cargando detalles del pedido...</Text>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text className="mt-2 text-gray-600">Cargando detalles del pedido...</Text>
       </View>
     );
   }
@@ -183,7 +246,7 @@ const OrderDetails = () => {
   if (!orderData) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
-        <Text>No se encontraron detalles para este pedido.</Text>
+        <Text className="text-gray-600">No se encontraron detalles para este pedido.</Text>
       </View>
     );
   }
@@ -219,9 +282,9 @@ const OrderDetails = () => {
             <View className="flex-1 p-3 bg-gray-50 rounded-lg mr-2">
               <Text className="text-xs text-gray-500">Estado</Text>
               <View className="flex-row items-center mt-1">
-                <Ionicons name="checkmark-circle" size={18} color="green" />
-                <Text className="ml-1 text-sm font-[Poppins-SemiBold] text-green-600">
-                  Completado
+                <Ionicons name="checkmark-circle" size={18} color="orange" />
+                <Text className="ml-1 text-sm font-[Poppins-SemiBold] text-orange-500">
+                  En Proceso
                 </Text>
               </View>
             </View>
