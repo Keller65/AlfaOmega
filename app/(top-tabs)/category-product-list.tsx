@@ -315,8 +315,8 @@ const CategoryProductScreen = memo(() => {
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
                     <Text className="font-[Poppins-SemiBold] tracking-[-0.3px] mb-1">Precios por cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <View>
-                        <Text key={index} className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
+                      <View key={index}>
+                        <Text className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
                           Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
                         </Text>
                         <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">
