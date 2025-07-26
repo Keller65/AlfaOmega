@@ -1,14 +1,14 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
-import { View, ActivityIndicator, Text, StyleSheet, Button } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Button, StyleSheet, Text, View } from 'react-native';
 import slugify from 'slugify';
 import { useAuth } from '../../context/auth';
-import { useRoute } from '@react-navigation/native';
+import CategoryProductScreen from './category-product-list';
 
 const Tab = createMaterialTopTabNavigator();
-import CategoryProductScreen from './category-product-list';
 
 interface ProductData {
   itemCode: string;
@@ -94,7 +94,7 @@ export default function TopTabNavigatorLayout() {
         return;
       }
 
-      const response = await axios.get<ProductData[]>('http://200.115.188.54:4325/sap/items/categories', { headers }); // Assuming this endpoint gives categories directly or items to extract categories from
+      const response = await axios.get<ProductData[]>('http://10.10.10.22:5050/sap/items/categories', { headers });
 
       const uniqueCategories = new Map<number, string>();
       response.data.forEach((cat: any) => {
@@ -108,11 +108,10 @@ export default function TopTabNavigatorLayout() {
         slug: slugify(name, { lower: true, strict: true }),
       }));
 
-      formattedCategories.unshift({ groupCode: 0, groupName: '0000', slug: 'todas' });
+      formattedCategories.unshift({ groupCode: 0, groupName: '0000', slug: 'Promociones' });
 
-      await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
+      // await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
       setCategories(formattedCategories);
-
     } catch (err: any) {
       console.error('Error al obtener categorías:', err);
       if (err.response) {
@@ -189,7 +188,7 @@ export default function TopTabNavigatorLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
-        initialRouteName={categories[0]?.slug || 'todas'}
+        initialRouteName={categories[0]?.slug || 'Promociones'}
         screenOptions={{
           tabBarActiveTintColor: '#000',
           tabBarInactiveTintColor: 'gray',

@@ -30,7 +30,7 @@ const ClientScreen = memo(() => {
     setError(null);
 
     axios
-      .get(`http://200.115.188.54:4325/sap/customers/by-salesperson?slpCode=${user.salesPersonCode}&page=1&pageSize=20`, {
+      .get(`http://10.10.10.22:5050/sap/customers/by-salesperson?slpCode=${user.salesPersonCode}&page=1&pageSize=20`, {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${user.token}`,

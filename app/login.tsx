@@ -58,7 +58,7 @@ export default function Login() {
     try {
       const deviceToken = "";
 
-      const response = await axios.post('http://200.115.188.54:4325/auth/employee', {
+      const response = await axios.post('http://10.10.10.22:5050/auth/employee', {
         employeeCode: Number(salesPersonCode),
         password: password,
         token: deviceToken,

@@ -44,7 +44,8 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
           >
             {item.itemName.toLowerCase()}
           </Text>
-          <Text className="text-[10px] text-gray-400">COD: {item.barCode}</Text>
+          <Text className="text-[10px] text-gray-400">{item.barCode}</Text>
+          <Text className="text-[10px] text-gray-400">Stock: {item.inStock}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -106,7 +107,7 @@ const CategoryProductScreen = memo(() => {
         'Content-Type': 'application/json',
       };
 
-      let url = `http://200.115.188.54:4325/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+      let url = `http://10.10.10.22:5050/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
 
       if (priceListNum) {
         url += `&priceList=${priceListNum}`;
@@ -308,9 +309,23 @@ const CategoryProductScreen = memo(() => {
                   />
                 </View>
                 <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px]">{selectedItem.itemName}</Text>
-                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.barCode}</Text>
-                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
-                <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+
+                <View className='w-full flex-row justify-between'>
+                  <View>
+                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.barCode}</Text>
+                    <View className='bg-gray-200 w-[70px] h-fit rounded-full items-center justify-center'>
+                      <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                    </View>
+                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-black">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+                  </View>
+
+                  <View>
+                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
+                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Pedido: {selectedItem.ordered}</Text>
+                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Comprometido: {selectedItem.committed}</Text>
+                  </View>
+                </View>
+
                 {selectedItem.tiers?.length > 0 && (
                   <View className="bg-gray-100 p-3 rounded-lg mt-4">
                     <Text className="font-[Poppins-SemiBold] tracking-[-0.3px] mb-1">Precios por cantidad:</Text>
@@ -328,7 +343,7 @@ const CategoryProductScreen = memo(() => {
                 )}
               </View>
 
-              <View>
+              <View className='mt-5'>
                 <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center">
                     <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
