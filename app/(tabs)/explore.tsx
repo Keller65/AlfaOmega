@@ -14,7 +14,6 @@ import * as Haptics from 'expo-haptics';
 import '../../global.css';
 import { OrderDataType } from '@/types/types';
 import { MaterialIcons, Feather, FontAwesome6, Ionicons } from '@expo/vector-icons';
-import CommentIcon from '@/assets/icons/CommetIcon';
 
 interface CartItemType {
   itemCode: string;
