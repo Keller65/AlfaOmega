@@ -14,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import '../../global.css';
 import { OrderDataType } from '@/types/types';
 import { MaterialIcons, Feather, FontAwesome6, Ionicons } from '@expo/vector-icons';
+import CommentIcon from '@/assets/icons/CommetIcon';
 
 interface CartItemType {
   itemCode: string;
@@ -139,7 +140,7 @@ const EmptyCart: React.FC<{ onClose: () => void; onAddProducts: () => void }> = 
         onClose();
         onAddProducts();
       }}
-      className="px-6 py-3 bg-blue-500 rounded-lg"
+      className="px-6 py-3 bg-black rounded-full"
       activeOpacity={0.7}
     >
       <Text className="text-white font-semibold">Explorar productos</Text>
@@ -240,7 +241,7 @@ export default function PedidosScreen() {
       Alert.alert('Éxito', 'Pedido enviado correctamente.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       closeCart();
-      // clearCart(); // Llama a clearCart aquí después de un envío exitoso
+      clearCart();
 
       if (res.data.docEntry) {
         setLastOrderDocEntry(res.data.docEntry);
@@ -328,13 +329,20 @@ export default function PedidosScreen() {
           <Text className="text-xl font-[Poppins-Bold] text-black">L. {total.toFixed(2)}</Text>
         </View>
 
-        <TouchableOpacity
-          className="flex-row items-center justify-center h-[50px] bg-[#000] rounded-full"
-          onPress={handleSubmitOrder}
-        >
-          <CartIcon color="white" />
-          <Text className="text-white font-[Poppins-Regular] ml-2">Realizar Pedido</Text>
-        </TouchableOpacity>
+        <View className='flex-row w-full gap-2 justify-between'>
+          <TouchableOpacity
+            className="flex items-center justify-center w-[50px] h-[50px] bg-[#000] rounded-full">
+            <MaterialIcons name="chat" size={22} color="white" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row flex-1 items-center justify-center h-[50px] bg-[#000] rounded-full"
+            onPress={handleSubmitOrder}
+          >
+            <CartIcon color="white" />
+            <Text className="text-white font-[Poppins-Regular] ml-2">Realizar Pedido</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </BottomSheetFooter>
   ), [total, customerSelected?.cardName, handleSubmitOrder]);
@@ -474,7 +482,7 @@ export default function PedidosScreen() {
         )}
       >
         <>
-          <Text className="text-lg font-bold mb-4 px-4">Resumen del Pedido</Text>
+          <Text className="text-lg font-[Poppins-Bold] tracking-[-0.3px] mb-4 px-4">Resumen del Pedido</Text>
           {products.length === 0 ? (
             <EmptyCart onClose={closeCart} onAddProducts={() => router.push('/client')} />
           ) : (
