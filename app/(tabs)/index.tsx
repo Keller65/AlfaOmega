@@ -6,8 +6,8 @@ import { BottomSheetModal, BottomSheetView, BottomSheetBackdrop } from '@gorhom/
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/context/auth';
+import "../../global.css"
 
-// Configuración global de notificaciones
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -54,7 +54,6 @@ export default function App() {
     };
   }, []);
 
-  // Función para registrar y obtener token de notificación Expo
   async function registerForPushNotificationsAsync(): Promise<string | null> {
     if (!Device.isDevice) {
       Alert.alert('Solo dispositivos físicos pueden recibir notificaciones');

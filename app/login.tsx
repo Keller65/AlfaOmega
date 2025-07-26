@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth, User } from "../context/auth";
+import "../global.css"
 
 export default function Login() {
   const { user, setUser } = useAuth();
