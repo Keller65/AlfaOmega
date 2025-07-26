@@ -144,12 +144,12 @@ const CategoryProductScreen = memo(() => {
 
   useEffect(() => {
     // Resetear cache y estado cuando cambian filtros 
-    // pagesCacheRef.current = new Map(); // esta line cusa el problema de reenderizado infinito
+    pagesCacheRef.current = new Map();
     setItems([]);
     setPage(1);
     setLoading(true);
     fetchProducts();
-  }, [groupCode, priceListNum, fetchProducts]);
+  }, [groupCode, priceListNum]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -236,7 +236,7 @@ const CategoryProductScreen = memo(() => {
   if (loading && !loadingMore) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#000" />
         <Text className="mt-4 text-gray-600">Cargando productos...</Text>
       </View>
     );
@@ -266,7 +266,7 @@ const CategoryProductScreen = memo(() => {
         ListFooterComponent={
           loadingMore !== false ? (
             <View className="py-4">
-              <ActivityIndicator size="small" color="#3b82f6" />
+              <ActivityIndicator size="small" color="#000" />
             </View>
           ) : null
         }
