@@ -18,6 +18,7 @@ const ClientScreen = memo(() => {
   const router = useRouter();
 
   const setSelectedCustomer = useAppStore((state) => state.setSelectedCustomer);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/customers/";
 
   useEffect(() => {
     if (!user?.salesPersonCode || !user?.token) {
@@ -29,13 +30,12 @@ const ClientScreen = memo(() => {
     setLoading(true);
     setError(null);
 
-    axios
-      .get(`http://10.10.10.22:5050/sap/customers/by-salesperson?slpCode=${user.salesPersonCode}&page=1&pageSize=20`, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-      })
+    axios.get(`${FETCH_URL}by-salesperson?slpCode=${user.salesPersonCode}&page=1&pageSize=20`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${user.token}`,
+      },
+    })
       .then((res) => {
         setCustomers(res.data.items || []);
         setFilteredCustomers(res.data.items || []);

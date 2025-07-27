@@ -76,6 +76,7 @@ const CategoryProductScreen = memo(() => {
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/";
 
   const snapPoints = useMemo(() => ['69%', '76%'], []);
 
@@ -107,7 +108,7 @@ const CategoryProductScreen = memo(() => {
         'Content-Type': 'application/json',
       };
 
-      let url = `http://10.10.10.22:5050/sap/items/active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
+      let url = `${FETCH_URL}active?page=${currentPage}&pageSize=${PAGE_SIZE}`;
 
       if (priceListNum) {
         url += `&priceList=${priceListNum}`;

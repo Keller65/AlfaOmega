@@ -37,6 +37,7 @@ export default function TopTabNavigatorLayout() {
   const [error, setError] = useState<string | null>(null);
   const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
   const [loadingClientData, setLoadingClientData] = useState(true);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
 
   const route = useRoute();
   const { priceListNum: routePriceListNum } = route.params as { priceListNum?: string };
@@ -70,7 +71,6 @@ export default function TopTabNavigatorLayout() {
     loadClientPriceList();
   }, [routePriceListNum]);
 
-
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
     'Content-Type': 'application/json',
@@ -87,20 +87,12 @@ export default function TopTabNavigatorLayout() {
     setError(null);
 
     try {
-      const cached = await AsyncStorage.getItem('cachedCategories');
-      if (cached) {
-        setCategories(JSON.parse(cached));
-        setLoadingCategories(false);
-        return;
-      }
-
-      const response = await axios.get<ProductData[]>('http://10.10.10.22:5050/sap/items/categories', { headers });
+      const response = await axios.get<ProductData[]>(FETCH_URL, { headers });
 
       const uniqueCategories = new Map<number, string>();
       response.data.forEach((cat: any) => {
         uniqueCategories.set(cat.code, cat.name);
       });
-
 
       const formattedCategories: ProductCategory[] = Array.from(uniqueCategories.entries()).map(([code, name]) => ({
         groupCode: code,
@@ -108,14 +100,13 @@ export default function TopTabNavigatorLayout() {
         slug: slugify(name, { lower: true, strict: true }),
       }));
 
-      formattedCategories.unshift({ groupCode: 0, groupName: '0000', slug: 'Promociones' });
-
-      // await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
+      formattedCategories.unshift({ groupCode: 0, groupName: '0000', slug: 'todas' });
       setCategories(formattedCategories);
+
     } catch (err: any) {
       console.error('Error al obtener categorías:', err);
-      if (err.response) {
-        setError(`Error del servidor: ${err.response.status} - ${err.response.data?.message || 'Mensaje desconocido'}`);
+      if (axios.isAxiosError(err)) {
+        setError(`Error del servidor: ${err.response?.status} - ${err.response?.data?.message || 'Mensaje desconocido'}`);
       } else if (err.request) {
         setError('No se pudo conectar al servidor. Verifica tu conexión.');
       } else {
@@ -188,7 +179,7 @@ export default function TopTabNavigatorLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
-        initialRouteName={categories[0]?.slug || 'Promociones'}
+        initialRouteName={categories[0]?.slug || 'todas'}
         screenOptions={{
           tabBarActiveTintColor: '#000',
           tabBarInactiveTintColor: 'gray',
@@ -204,7 +195,6 @@ export default function TopTabNavigatorLayout() {
           },
           tabBarLabelStyle: {
             fontSize: 12,
-            width: 230,
             fontWeight: 'bold',
           },
           tabBarPressColor: 'rgba(0,0,0,0.1)',

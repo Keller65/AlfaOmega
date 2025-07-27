@@ -29,6 +29,7 @@ export default function TopTabNavigatorLayout() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientPriceList, setClientPriceList] = useState<string | undefined>(undefined);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/categories";
 
   const route = useRoute();
   const { cardCode, cardName, federalTaxID, priceListNum } = route.params as {
@@ -37,8 +38,6 @@ export default function TopTabNavigatorLayout() {
     federalTaxID?: string;
     priceListNum?: string;
   };
-
-  // --- All Hooks must be declared here, unconditionally ---
 
   useEffect(() => {
     const storeAndLoadClientData = async () => {
@@ -85,7 +84,7 @@ export default function TopTabNavigatorLayout() {
     };
 
     storeAndLoadClientData();
-  }, [cardCode, cardName, federalTaxID, priceListNum, clientPriceList]); // Added clientPriceList to dependency array
+  }, [cardCode, cardName, federalTaxID, priceListNum, clientPriceList]);
 
   const headers = useMemo(() => ({
     Authorization: `Bearer ${user?.token}`,
@@ -110,10 +109,7 @@ export default function TopTabNavigatorLayout() {
         return;
       }
 
-      const response = await axios.get<Array<{ code: string, name: string }>>(
-        'http://200.115.188.54:4325/sap/items/categories',
-        { headers }
-      );
+      const response = await axios.get<Array<{ code: string, name: string }>>(FETCH_URL, { headers });
 
       const formattedCategories: ProductCategory[] = response.data.map(category => ({
         code: category.code,
@@ -148,7 +144,6 @@ export default function TopTabNavigatorLayout() {
     fetchCategories();
   }, [fetchCategories]);
 
-  // The useMemo for tabScreens also needs to be unconditional
   const tabScreens = useMemo(() => (
     categories.map((category) => (
       <Tab.Screen
@@ -166,8 +161,6 @@ export default function TopTabNavigatorLayout() {
       />
     ))
   ), [categories, clientPriceList]);
-
-  // --- Conditional Renders (Return statements) go AFTER all hooks ---
 
   if (!user?.token) {
     return (

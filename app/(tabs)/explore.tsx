@@ -1,19 +1,19 @@
-import { useRef, useMemo, useCallback, memo, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
-import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
-import PlusIcon from '@/assets/icons/PlusIcon';
 import CartIcon from '@/assets/icons/CartIcon';
 import MinusIcon from '@/assets/icons/MinusIcon';
+import PlusIcon from '@/assets/icons/PlusIcon';
 import TrashIcon from '@/assets/icons/TrashIcon';
-import { useAppStore } from '@/state/index';
-import { BottomSheetModal, BottomSheetBackdrop, BottomSheetFooter, BottomSheetFlatList, BottomSheetFooterProps, BottomSheetBackdropProps, } from '@gorhom/bottom-sheet';
 import { useAuth } from '@/context/auth';
-import axios from 'axios';
-import * as Haptics from 'expo-haptics';
-import '../../global.css';
+import { useAppStore } from '@/state/index';
 import { OrderDataType } from '@/types/types';
-import { MaterialIcons, Feather, FontAwesome6, Ionicons } from '@expo/vector-icons';
+import { Feather, FontAwesome6, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { BottomSheetBackdrop, BottomSheetBackdropProps, BottomSheetFlatList, BottomSheetFooter, BottomSheetFooterProps, BottomSheetModal, } from '@gorhom/bottom-sheet';
+import axios from 'axios';
+import Constants from 'expo-constants';
+import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import '../../global.css';
 
 interface CartItemType {
   itemCode: string;
@@ -162,6 +162,10 @@ export default function PedidosScreen() {
   const [orderData, setOrderData] = useState<OrderDataType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/quotations";
+  const FETCH_URL_CREATE_ORDER = process.env.EXPO_PUBLIC_API_URL + "/sap/orders";
+
+  console.log(FETCH_URL)
 
   const fetchOrders = useCallback(async (docEntryToFetch: string | number) => {
     if (!docEntryToFetch) {
@@ -170,7 +174,7 @@ export default function PedidosScreen() {
     }
     setIsRefreshing(true);
     try {
-      const res = await axios.get(`http://200.115.188.54:4325/sap/quotations/${docEntryToFetch}`, {
+      const res = await axios.get(`${FETCH_URL}/${docEntryToFetch}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -230,7 +234,7 @@ export default function PedidosScreen() {
 
     try {
       setIsLoading(true);
-      const res = await axios.post('http://200.115.188.54:4325/sap/orders', payload, {
+      const res = await axios.post(FETCH_URL_CREATE_ORDER, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',

@@ -13,6 +13,7 @@ export default function Login() {
   const [salesPersonCode, setSalesPersonCode] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/auth/employee";
 
   useEffect(() => {
     (async () => {
@@ -58,7 +59,7 @@ export default function Login() {
     try {
       const deviceToken = "";
 
-      const response = await axios.post('http://10.10.10.22:5050/auth/employee', {
+      const response = await axios.post(FETCH_URL, {
         employeeCode: Number(salesPersonCode),
         password: password,
         token: deviceToken,

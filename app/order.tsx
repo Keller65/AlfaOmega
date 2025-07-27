@@ -20,6 +20,7 @@ const OrderDetails = () => {
   const [orderData, setOrderData] = useState<OrderDataType | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/quotations/";
 
   const { user } = useAuth();
 
@@ -29,7 +30,7 @@ const OrderDetails = () => {
     const fetchOrderDetails = async () => {
       try {
         const response = await axios.get(
-          `http://200.115.188.54:4325/sap/quotations/${OrderDetails}`
+          `${FETCH_URL}${OrderDetails}`
         );
         if (isMounted) {
           setOrderData(response.data);
