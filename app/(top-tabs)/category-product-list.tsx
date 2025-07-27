@@ -20,33 +20,32 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
   return (
     <TouchableOpacity
       onPress={() => onPress(item)}
-      className="mb-4 bg-white w-[190px] relative"
+      className="mb-4 bg-white w-[190px] gap-3 p-2"
     >
-      {itemInCart && (
-        <View className="absolute top-1 right-1 bg-blue-500 rounded-full w-6 h-6 items-center justify-center z-10">
-          <Text className="text-white text-xs font-bold">{itemInCart.quantity}</Text>
-        </View>
-      )}
-      <View className="gap-3 p-2">
-        <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px]">
-          <Image
-            source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
-            className="w-[150px] h-[150px]"
-            resizeMode="contain"
-          />
-        </View>
-        <View>
-          <Text className="font-medium text-sm text-black">L. {item.price.toFixed(2)}</Text>
-          <Text
-            className="font-medium text-sm leading-4"
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {item.itemName.toLowerCase()}
-          </Text>
-          <Text className="text-[10px] text-gray-400">{item.barCode}</Text>
-          <Text className="text-[10px] text-gray-400">Stock: {item.inStock}</Text>
-        </View>
+      <View className="rounded-2xl bg-gray-100 items-center justify-center h-[180px] relative">
+        {itemInCart && (
+          <View className="absolute top-2 right-2 bg-black rounded-full w-6 h-6 items-center justify-center z-10">
+            <Text className="text-white text-xs font-[Poppins-Bold]">{itemInCart.quantity}</Text>
+          </View>
+        )}
+        <Image
+          source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
+          className="w-[150px] h-[150px]"
+          resizeMode="contain"
+        />
+      </View>
+
+      <View>
+        <Text className="font-medium text-sm text-black">L. {item.price.toFixed(2)}</Text>
+        <Text
+          className="font-medium text-sm leading-4"
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          {item.itemName.toLowerCase()}
+        </Text>
+        <Text className="text-[10px] text-gray-400">{item.barCode}</Text>
+        <Text className="text-[10px] text-gray-400">Stock: {item.inStock}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -314,7 +313,7 @@ const CategoryProductScreen = memo(() => {
                 <View className='w-full flex-row justify-between'>
                   <View>
                     <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.barCode}</Text>
-                    <View className='bg-gray-200 w-[70px] h-fit rounded-full items-center justify-center'>
+                    <View className='bg-gray-200 w-[100px] p-1 h-fit rounded-full items-center justify-center'>
                       <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
                     </View>
                     <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-black">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
@@ -360,16 +359,29 @@ const CategoryProductScreen = memo(() => {
                       <PlusIcon size={20} />
                     </TouchableOpacity>
                   </View>
-                  <View className="w-[126px]">
+                  <View className="w-[130px]">
                     <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px]">Total</Text>
-                    <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">L.{total.toFixed(2)}</Text>
+                    <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">
+                      {new Intl.NumberFormat('es-HN', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                        useGrouping: true
+                      }).format(total)}
+                    </Text>
                   </View>
                 </View>
 
                 <TouchableOpacity className="mt-4 bg-black rounded-full py-3 items-center justify-center h-[50px]" onPress={handleAddToCart}>
                   <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
                 </TouchableOpacity>
-                <Text className="text-xs text-gray-500 mt-2">Precio unitario aplicado: L.{unitPrice.toFixed(2)}</Text>
+                <Text className="text-xs text-gray-500 mt-2">
+                  Precio unitario aplicado: L.
+                  {new Intl.NumberFormat('es-HN', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                    useGrouping: true
+                  }).format(unitPrice)}
+                </Text>
               </View>
             </View>
           )}

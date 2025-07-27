@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { TextInput } from 'react-native';
 import { useAppStore } from '@/state/index';
+import { StatusBar } from 'expo-status-bar';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -94,6 +95,7 @@ export default function RootLayout() {
           </Stack>
         </BottomSheetModalProvider>
       </AuthProvider>
+      <StatusBar style="dark" />
     </GestureHandlerRootView>
   );
 }
