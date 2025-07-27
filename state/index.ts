@@ -7,7 +7,7 @@ type CartItem = ProductDiscount & {
   quantity: number;
   unitPrice: number;
   total: number;
-  tiers: {
+  tiers?: {
     qty: number;
     price: number;
     percent: number;
@@ -24,7 +24,7 @@ interface Customer {
 interface AppStoreState {
   products: CartItem[];
   addProduct: (productToAdd: Omit<CartItem, 'total'>) => void;
-  updateQuantity: (itemCode: string, quantity: number) => void;
+  updateQuantity: (itemCode: string, quantity: number, newPrice?: number) => void;
   removeProduct: (itemCode: string) => void;
   clearCart: () => void;
 
@@ -41,7 +41,6 @@ interface AppStoreState {
   setRawSearchText: (text: string) => void;
   setDebouncedSearchText: (text: string) => void;
 
-  // Nuevo campo para guardar el docEntry
   lastOrderDocEntry: number | null;
   setLastOrderDocEntry: (docEntry: number) => void;
   clearLastOrderDocEntry: () => void;
@@ -75,12 +74,14 @@ export const useAppStore = create<AppStoreState>()(
             ...products[existingIndex],
             ...productToAdd,
             quantity: newQuantity,
+            unitPrice: unitPrice,
             total: newTotal,
           };
         } else {
           updatedProducts.push({
             ...productToAdd,
             quantity: newQuantity,
+            unitPrice: unitPrice,
             total: newTotal,
           });
         }
@@ -88,7 +89,7 @@ export const useAppStore = create<AppStoreState>()(
         set({ products: updatedProducts });
       },
 
-      updateQuantity: (itemCode, quantity) => {
+      updateQuantity: (itemCode, quantity, newPrice) => {
         const products = get().products;
         const index = products.findIndex(p => p.itemCode === itemCode);
         if (index > -1) {
@@ -97,13 +98,14 @@ export const useAppStore = create<AppStoreState>()(
             set({ products: updated });
           } else {
             const product = products[index];
-            const unitPrice = product.unitPrice;
-            const total = unitPrice * quantity;
+            const actualUnitPrice = newPrice !== undefined ? newPrice : product.unitPrice;
+            const total = actualUnitPrice * quantity;
 
             const updatedProducts = [...products];
             updatedProducts[index] = {
               ...product,
               quantity,
+              unitPrice: actualUnitPrice,
               total,
             };
             set({ products: updatedProducts });

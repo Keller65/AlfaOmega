@@ -1,16 +1,20 @@
 import { useAppStore } from '@/state/index';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetFooter, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useRoute } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import axios from 'axios';
+import { Image as ExpoImage } from 'expo-image';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MinusIcon from '../../assets/icons/MinusIcon';
 import PlusIcon from '../../assets/icons/PlusIcon';
 import { useAuth } from '../../context/auth';
 import { ProductDiscount } from '../../types/types';
 
 const PAGE_SIZE = 20;
+
+const DEFAULT_PRODUCT_IMAGE = 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png';
 
 const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (item: ProductDiscount) => void }) => {
   const itemInCart = useAppStore(state =>
@@ -28,10 +32,11 @@ const ProductItem = memo(({ item, onPress }: { item: ProductDiscount, onPress: (
             <Text className="text-white text-xs font-[Poppins-Bold]">{itemInCart.quantity}</Text>
           </View>
         )}
-        <Image
-          source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
+        <ExpoImage
+          source={{ uri: item.imageUrl || DEFAULT_PRODUCT_IMAGE }}
           className="w-[150px] h-[150px]"
-          resizeMode="contain"
+          contentFit="contain"
+          transition={500}
         />
       </View>
 
@@ -70,6 +75,10 @@ const CategoryProductScreen = memo(() => {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [total, setTotal] = useState<number>(0);
+  const [editablePrice, setEditablePrice] = useState<number>(0);
+  const [isPriceValid, setIsPriceValid] = useState<boolean>(true);
+  const [editablePriceText, setEditablePriceText] = useState<string>('0.00');
+
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
@@ -77,7 +86,9 @@ const CategoryProductScreen = memo(() => {
   const [loadingMore, setLoadingMore] = useState(false);
   const FETCH_URL = process.env.EXPO_PUBLIC_API_URL + "/sap/items/";
 
-  const snapPoints = useMemo(() => ['69%', '76%'], []);
+  const insets = useSafeAreaInsets();
+
+  const snapPoints = useMemo(() => ['70%', '100%'], []);
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index === -1) setSelectedItem(null);
@@ -144,7 +155,6 @@ const CategoryProductScreen = memo(() => {
   }, [user?.token, groupCode, priceListNum, page]);
 
   useEffect(() => {
-    // Resetear cache y estado cuando cambian filtros 
     pagesCacheRef.current = new Map();
     setItems([]);
     setPage(1);
@@ -155,14 +165,38 @@ const CategoryProductScreen = memo(() => {
   useEffect(() => {
     if (!selectedItem) {
       setTotal(0);
+      setUnitPrice(0);
+      setEditablePrice(0);
+      setEditablePriceText('0.00');
+      setIsPriceValid(true);
       return;
     }
-    let newUnitPrice = selectedItem.price;
+
+    let calculatedUnitPrice = selectedItem.price;
     const applicable = selectedItem.tiers?.filter(t => quantity >= t.qty).sort((a, b) => b.qty - a.qty)[0];
-    if (applicable) newUnitPrice = applicable.price;
-    setUnitPrice(newUnitPrice);
-    setTotal(newUnitPrice * quantity);
-  }, [selectedItem, quantity]);
+    if (applicable) {
+      calculatedUnitPrice = applicable.price;
+    }
+
+    setUnitPrice(calculatedUnitPrice);
+    setEditablePrice(calculatedUnitPrice);
+    setEditablePriceText(calculatedUnitPrice.toFixed(2));
+    setTotal(calculatedUnitPrice * quantity);
+    setIsPriceValid(true);
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (selectedItem && editablePrice > 0 && quantity > 0) {
+      setTotal(editablePrice * quantity);
+      if (editablePrice < selectedItem.price) {
+        setIsPriceValid(false);
+      } else {
+        setIsPriceValid(true);
+      }
+    } else {
+      setTotal(0);
+    }
+  }, [editablePrice, quantity, selectedItem]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -194,22 +228,27 @@ const CategoryProductScreen = memo(() => {
   }, []);
 
   const handleAddToCart = useCallback(() => {
-    if (!selectedItem || quantity <= 0) return;
+    const finalPrice = editablePrice;
+
+    if (!selectedItem || quantity <= 0 || !isPriceValid || finalPrice <= 0) {
+      return;
+    }
+
     const itemInCart = productsInCart.find(p => p.itemCode === selectedItem.itemCode);
-    const productData = { ...selectedItem, quantity, unitPrice };
+    const productData = { ...selectedItem, quantity, unitPrice: finalPrice };
 
     console.log("Producto agregado al carrito:", productData);
 
     if (itemInCart) {
       Alert.alert(
         'Producto ya en carrito',
-        `${selectedItem.itemName} ya está en tu carrito. ¿Actualizar cantidad?`,
+        `${selectedItem.itemName} ya está en tu carrito. ¿Actualizar cantidad y precio?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Actualizar',
             onPress: () => {
-              updateQuantity(selectedItem.itemCode, quantity);
+              updateQuantity(selectedItem.itemCode, quantity, finalPrice);
               bottomSheetModalRef.current?.dismiss();
             },
           },
@@ -219,7 +258,7 @@ const CategoryProductScreen = memo(() => {
       addProduct(productData);
       bottomSheetModalRef.current?.dismiss();
     }
-  }, [addProduct, productsInCart, quantity, selectedItem, unitPrice, updateQuantity]);
+  }, [addProduct, productsInCart, quantity, selectedItem, editablePrice, isPriceValid, updateQuantity]);
 
   const filteredItems = useMemo(() => {
     const text = debouncedSearchText?.toLowerCase() || '';
@@ -233,6 +272,68 @@ const CategoryProductScreen = memo(() => {
   const renderItem = useCallback(({ item }: { item: ProductDiscount }) => (
     <ProductItem item={item} onPress={handleProductPress} />
   ), [handleProductPress]);
+
+  const renderFooter = useCallback((props: any) => (
+    selectedItem ? (
+      <BottomSheetFooter {...props}>
+        <View
+          className='w-full px-4 pt-4 bg-white border-t border-gray-200'
+          style={{ paddingBottom: insets.bottom }}
+        >
+          <View className="flex-row justify-between items-center">
+            <View className="flex-row items-center">
+              <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
+                <MinusIcon size={20} />
+              </TouchableOpacity>
+              <TextInput
+                value={quantity.toString()}
+                onChangeText={(text) => setQuantity(Math.max(1, parseInt(text.replace(/[^0-9]/g, '')) || 1))}
+                keyboardType="numeric"
+                className="mx-4 text-center text-lg text-black w-12"
+              />
+              <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => q + 1)}>
+                <PlusIcon size={20} />
+              </TouchableOpacity>
+            </View>
+            <View className="w-[130px]">
+              <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px] leading-3">Total</Text>
+              <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">
+                {new Intl.NumberFormat('es-HN', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                  useGrouping: true
+                }).format(total)}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            className={`mt-4 rounded-full py-3 items-center justify-center h-[50px] ${!selectedItem || quantity <= 0 || !isPriceValid || editablePrice <= 0
+              ? 'bg-gray-400'
+              : 'bg-black'
+              }`}
+            onPress={handleAddToCart}
+            disabled={!selectedItem || quantity <= 0 || !isPriceValid || editablePrice <= 0}
+          >
+            <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
+          </TouchableOpacity>
+
+          <View className='flex-row w-full h-fit items-center gap-3 mt-2'>
+            <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">
+              Precio unitario aplicado: L.
+              {new Intl.NumberFormat('es-HN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                useGrouping: true
+              }).format(editablePrice)}
+            </Text>
+            <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio original: L.{selectedItem.price.toFixed(2)}</Text>
+          </View>
+        </View>
+      </BottomSheetFooter>
+    ) : null
+  ), [selectedItem, quantity, total, editablePrice, isPriceValid, handleAddToCart, insets.bottom, setQuantity]);
+
 
   if (loading && !loadingMore) {
     return (
@@ -293,95 +394,110 @@ const CategoryProductScreen = memo(() => {
         ref={bottomSheetModalRef}
         onChange={handleSheetChanges}
         snapPoints={snapPoints}
+        enablePanDownToClose={true}
         backdropComponent={(props) => (
           <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} pressBehavior="close" />
         )}
+        footerComponent={renderFooter}
       >
-        <BottomSheetView className="flex-1 items-center">
+        <BottomSheetView style={{ flex: 1 }}>
           {selectedItem && (
-            <View className="w-full px-4 space-y-6">
-              <View>
-                <View className="w-full h-[200px] items-center justify-center bg-gray-200 rounded-xl mb-4">
-                  <Image
-                    source={{ uri: 'https://pub-978b0420802d40dca0561ef586d321f7.r2.dev/bote%20de%20chile%20tabasco%201%20galon.png' }}
-                    className="w-[200px] h-[200px]"
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text className="text-[20px] font-[Poppins-Bold] mb-2 tracking-[-0.3px]">{selectedItem.itemName}</Text>
+            <View>
+              <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-6 shadow-sm shadow-gray-400">
+                <ExpoImage
+                  source={{ uri: selectedItem.imageUrl || DEFAULT_PRODUCT_IMAGE }}
+                  className="w-[230px] h-[230px]"
+                  contentFit="contain"
+                  transition={500}
+                />
+              </View>
 
-                <View className='w-full flex-row justify-between'>
-                  <View>
-                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Codigo: {selectedItem.barCode}</Text>
-                    <View className='bg-gray-200 w-[100px] p-1 h-fit rounded-full items-center justify-center'>
-                      <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+              <View className='px-[16px]'>
+                <Text className="text-[24px] font-[Poppins-Bold] mb-4 tracking-[-0.3px] leading-8 text-gray-900">
+                  {selectedItem.itemName}
+                </Text>
+
+                <View className="bg-white py-4 mb-6 rounded-lg">
+                  <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800">Precio de Venta:</Text>
+                  <View className="flex-row items-center">
+                    <Text className="font-[Poppins-Bold] text-lg tracking-[-0.3px] text-black mr-2">L.</Text>
+                    <TextInput
+                      className={`p-2 text-lg font-[Poppins-Bold] text-black w-[100px] ${!isPriceValid ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                      value={editablePriceText}
+                      onChangeText={(text) => {
+                        const cleanedText = text.replace(/[^0-9.]/g, '');
+                        const parts = cleanedText.split('.');
+                        if (parts.length > 2) {
+                          setEditablePriceText(parts[0] + '.' + parts.slice(1).join(''));
+                        } else {
+                          setEditablePriceText(cleanedText);
+                        }
+
+                        let parsedValue = parseFloat(cleanedText);
+                        setEditablePrice(isNaN(parsedValue) ? 0 : parsedValue);
+                      }}
+                      keyboardType="numeric"
+                      onBlur={() => {
+                        let finalValue = parseFloat(editablePriceText);
+
+                        if (isNaN(finalValue) || finalValue <= 0) {
+                          finalValue = selectedItem.price;
+                        } else if (selectedItem && finalValue < selectedItem.price) {
+                          finalValue = selectedItem.price;
+                        }
+
+                        setEditablePrice(finalValue);
+                        setEditablePriceText(finalValue.toFixed(2));
+                        setIsPriceValid(finalValue >= selectedItem.price);
+                      }}
+                    />
+                  </View>
+                  {!isPriceValid && (
+                    <Text className="text-red-600 text-xs mt-1 font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al precio base.</Text>
+                  )}
+                  <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio base original: L.{selectedItem.price.toFixed(2)}</Text>
+                </View>
+
+                <View className='w-full flex-row justify-between mb-6'>
+                  <View className="flex-1 pr-2">
+                    <View className="bg-gray-100 p-3 rounded-lg mb-3">
+                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
+                      <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.barCode}</Text>
                     </View>
-                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-black">Precio base: L.{selectedItem.price.toFixed(2)}</Text>
+                    <View className="bg-gray-100 p-3 rounded-lg">
+                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
+                      <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                    </View>
                   </View>
 
-                  <View>
-                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Stock: {selectedItem.inStock}</Text>
-                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Pedido: {selectedItem.ordered}</Text>
-                    <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">Comprometido: {selectedItem.committed}</Text>
+                  <View className="flex-1 pl-2">
+                    <View className="bg-gray-100 p-3 rounded-lg mb-3">
+                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Inventario:</Text>
+                      <Text className="font-[Poppins-Bold] text-base text-gray-900">Disponible: {selectedItem.inStock}</Text>
+                      <Text className="font-[Poppins-Regular] text-sm text-gray-600">En Pedido: {selectedItem.ordered}</Text>
+                      <Text className="font-[Poppins-Regular] text-sm text-gray-600">Comprometido: {selectedItem.committed}</Text>
+                    </View>
                   </View>
                 </View>
 
                 {selectedItem.tiers?.length > 0 && (
-                  <View className="bg-gray-100 p-3 rounded-lg mt-4">
-                    <Text className="font-[Poppins-SemiBold] tracking-[-0.3px] mb-1">Precios por cantidad:</Text>
+                  <View className="bg-gray-100 p-4 rounded-lg mt-4 mb-4">
+                    <Text className="font-[Poppins-Bold] text-base tracking-[-0.3px] mb-3 text-gray-800">Precios por Cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
-                      <View key={index}>
-                        <Text className="font-[Poppins-Regular] text-sm tracking-[-0.3px] text-gray-700">
-                          Desde {tier.qty} unidades: L. {tier.price.toFixed(2)} ({tier.percent}% desc)
+                      <View key={index} className="mb-2">
+                        <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-700">
+                          Desde {tier.qty} unidades: <Text className="font-[Poppins-Bold] text-base">L. {tier.price.toFixed(2)}</Text>
+                          {tier.percent > 0 && <Text className="text-green-600"> ({tier.percent}% desc)</Text>}
                         </Text>
-                        <Text className="font-[Poppins-SemiBold] text-sm tracking-[-0.3px] text-gray-500">
-                          {selectedItem.tiers[0].expiry}
-                        </Text>
+                        {tier.expiry && (
+                          <Text className="font-[Poppins-Regular] text-xs text-gray-500">
+                            Válido hasta: {tier.expiry}
+                          </Text>
+                        )}
                       </View>
                     ))}
                   </View>
                 )}
-              </View>
-
-              <View className='mt-5'>
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-row items-center">
-                    <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => Math.max(1, q - 1))}>
-                      <MinusIcon size={20} />
-                    </TouchableOpacity>
-                    <TextInput
-                      value={quantity.toString()}
-                      onChangeText={(text) => setQuantity(Math.max(1, parseInt(text.replace(/[^0-9]/g, '')) || 1))}
-                      keyboardType="numeric"
-                      className="mx-4 text-center text-lg text-black w-12"
-                    />
-                    <TouchableOpacity className="bg-gray-200 rounded-full p-2" onPress={() => setQuantity(q => q + 1)}>
-                      <PlusIcon size={20} />
-                    </TouchableOpacity>
-                  </View>
-                  <View className="w-[130px]">
-                    <Text className="font-[Poppins-Bold] text-gray-500 tracking-[-0.3px]">Total</Text>
-                    <Text className="text-2xl font-[Poppins-Bold] tracking-[-0.3px]">
-                      {new Intl.NumberFormat('es-HN', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                        useGrouping: true
-                      }).format(total)}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity className="mt-4 bg-black rounded-full py-3 items-center justify-center h-[50px]" onPress={handleAddToCart}>
-                  <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
-                </TouchableOpacity>
-                <Text className="text-xs text-gray-500 mt-2">
-                  Precio unitario aplicado: L.
-                  {new Intl.NumberFormat('es-HN', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                    useGrouping: true
-                  }).format(unitPrice)}
-                </Text>
               </View>
             </View>
           )}
