@@ -44,7 +44,7 @@ export interface Customer {
   cardCode: string;
   cardName: string;
   federalTaxID: string;
-  priceListNum: number;
+  priceListNum: string;
 }
 
 export interface CustomersResponse {

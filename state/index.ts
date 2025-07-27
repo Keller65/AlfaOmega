@@ -19,6 +19,7 @@ interface Customer {
   cardCode: string;
   cardName: string;
   federalTaxID: string;
+  priceListNum: string
 }
 
 interface AppStoreState {

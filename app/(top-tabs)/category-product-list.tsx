@@ -317,23 +317,10 @@ const CategoryProductScreen = memo(() => {
           >
             <Text className="text-white font-[Poppins-Bold]">Agregar al carrito</Text>
           </TouchableOpacity>
-
-          <View className='flex-row w-full h-fit items-center gap-3 mt-2'>
-            <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">
-              Precio unitario aplicado: L.
-              {new Intl.NumberFormat('es-HN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-                useGrouping: true
-              }).format(editablePrice)}
-            </Text>
-            <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio original: L.{selectedItem.price.toFixed(2)}</Text>
-          </View>
         </View>
       </BottomSheetFooter>
     ) : null
   ), [selectedItem, quantity, total, editablePrice, isPriceValid, handleAddToCart, insets.bottom, setQuantity]);
-
 
   if (loading && !loadingMore) {
     return (
@@ -403,7 +390,7 @@ const CategoryProductScreen = memo(() => {
         <BottomSheetView style={{ flex: 1 }}>
           {selectedItem && (
             <View>
-              <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-6 shadow-sm shadow-gray-400">
+              <View className="w-full h-[230px] items-center justify-center bg-gray-200 mb-4 shadow-sm shadow-gray-400">
                 <ExpoImage
                   source={{ uri: selectedItem.imageUrl || DEFAULT_PRODUCT_IMAGE }}
                   className="w-[230px] h-[230px]"
@@ -413,12 +400,12 @@ const CategoryProductScreen = memo(() => {
               </View>
 
               <View className='px-[16px]'>
-                <Text className="text-[24px] font-[Poppins-Bold] mb-4 tracking-[-0.3px] leading-8 text-gray-900">
+                <Text className="text-[24px] font-[Poppins-Bold] tracking-[-0.3px] leading-8 text-gray-900">
                   {selectedItem.itemName}
                 </Text>
 
-                <View className="bg-white py-4 mb-6 rounded-lg">
-                  <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800">Precio de Venta:</Text>
+                <View className="bg-white py-4 rounded-lg">
+                  <Text className="font-[Poppins-SemiBold] text-base tracking-[-0.3px] text-gray-800 leading-3">Precio de Venta:</Text>
                   <View className="flex-row items-center">
                     <Text className="font-[Poppins-Bold] text-lg tracking-[-0.3px] text-black mr-2">L.</Text>
                     <TextInput
@@ -456,32 +443,21 @@ const CategoryProductScreen = memo(() => {
                     <Text className="text-red-600 text-xs mt-1 font-[Poppins-Regular] tracking-[-0.3px]">El precio no puede ser menor al precio base.</Text>
                   )}
                   <Text className="text-xs text-gray-500 font-[Poppins-Regular] tracking-[-0.3px]">Precio base original: L.{selectedItem.price.toFixed(2)}</Text>
-                </View>
 
-                <View className='w-full flex-row justify-between mb-6'>
-                  <View className="flex-1 pr-2">
-                    <View className="bg-gray-100 p-3 rounded-lg mb-3">
-                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
-                      <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.barCode}</Text>
-                    </View>
+                  <View className="flex-1 mt-2">
                     <View className="bg-gray-100 p-3 rounded-lg">
-                      <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
-                      <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
-                    </View>
-                  </View>
-
-                  <View className="flex-1 pl-2">
-                    <View className="bg-gray-100 p-3 rounded-lg mb-3">
                       <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Inventario:</Text>
-                      <Text className="font-[Poppins-Bold] text-base text-gray-900">Disponible: {selectedItem.inStock}</Text>
-                      <Text className="font-[Poppins-Regular] text-sm text-gray-600">En Pedido: {selectedItem.ordered}</Text>
-                      <Text className="font-[Poppins-Regular] text-sm text-gray-600">Comprometido: {selectedItem.committed}</Text>
+                      <View className='flex-row gap-2 items-center justify-between'>
+                        <Text className="font-[Poppins-Bold] text-base text-gray-900">Disponible: {selectedItem.inStock}</Text>
+                        <Text className="font-[Poppins-Regular] text-sm text-gray-600">En Pedido: {selectedItem.ordered}</Text>
+                        <Text className="font-[Poppins-Regular] text-sm text-gray-600">Comprometido: {selectedItem.committed}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
 
                 {selectedItem.tiers?.length > 0 && (
-                  <View className="bg-gray-100 p-4 rounded-lg mt-4 mb-4">
+                  <View className="bg-gray-100 p-4 rounded-lg mb-4">
                     <Text className="font-[Poppins-Bold] text-base tracking-[-0.3px] mb-3 text-gray-800">Precios por Cantidad:</Text>
                     {selectedItem.tiers.map((tier, index) => (
                       <View key={index} className="mb-2">
@@ -498,6 +474,17 @@ const CategoryProductScreen = memo(() => {
                     ))}
                   </View>
                 )}
+
+                <View className="flex-1 flex-row w-full h-fit justify-between gap-4">
+                  <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[60px]">
+                    <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Código de Barras:</Text>
+                    <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.barCode}</Text>
+                  </View>
+                  <View className="bg-gray-100 p-3 flex-1 rounded-lg h-[60px]">
+                    <Text className="font-[Poppins-SemiBold] text-xs tracking-[-0.3px] text-gray-700 mb-1">Unidad de Venta:</Text>
+                    <Text className="font-[Poppins-Bold] text-base text-gray-900">{selectedItem.salesUnit} x {selectedItem.salesItemsPerUnit}</Text>
+                  </View>
+                </View>
               </View>
             </View>
           )}
