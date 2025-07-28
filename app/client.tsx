@@ -76,8 +76,6 @@ const ClientScreen = memo(() => {
           pathname: '/shop',
           params: {
             cardCode: customer.cardCode,
-            cardName: customer.cardName,
-            federalTaxID: customer.federalTaxID,
             priceListNum: customer.priceListNum
           },
         });

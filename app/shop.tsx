@@ -119,7 +119,7 @@ export default function TopTabNavigatorLayout() {
 
       formattedCategories.unshift({
         code: '0000',
-        name: 'Todas',
+        name: 'Ofertas',
         slug: 'todas'
       });
 

@@ -52,6 +52,7 @@
       "typedRoutes": true
     },
     "extra": {
+      "EXPO_PUBLIC_API_URL": "http://200.115.188.54:4325",
       "router": {},
       "eas": {
         "projectId": "2b76a3bb-99fb-4601-8265-be0f86eaec71"
