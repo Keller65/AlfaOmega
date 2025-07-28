@@ -15,9 +15,7 @@ const config = {
           android: {
             compileSdkVersion: 34,
             targetSdkVersion: 34,
-            extra: {
-              kotlinVersion: '1.8.0',
-            },
+            kotlinVersion: '1.8.0',
           },
         },
       ],
