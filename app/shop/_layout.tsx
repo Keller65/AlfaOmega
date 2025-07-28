@@ -9,6 +9,7 @@ import { useRoute } from '@react-navigation/native';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './(top-tabs)/category-product-list';
+import Prueba from '@/components/Prueba';
 
 interface ProductCategory {
   code: string;
@@ -120,7 +121,7 @@ export default function TopTabNavigatorLayout() {
       formattedCategories.unshift({
         code: '0000',
         name: 'Ofertas',
-        slug: 'todas'
+        slug: 'ofertas'
       });
 
       await AsyncStorage.setItem('cachedCategories', JSON.stringify(formattedCategories));
@@ -149,7 +150,7 @@ export default function TopTabNavigatorLayout() {
       <Tab.Screen
         key={category.code}
         name={category.slug}
-        component={CategoryProductScreen}
+        component={Prueba}
         options={{
           title: category.name.charAt(0).toUpperCase() + category.name.slice(1).toLowerCase(),
         }}
