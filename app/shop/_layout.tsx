@@ -9,7 +9,7 @@ import { useRoute } from '@react-navigation/native';
 
 const Tab = createMaterialTopTabNavigator();
 import CategoryProductScreen from './(top-tabs)/category-product-list';
-import Prueba from '@/components/Prueba';
+// import Prueba from '@/components/Prueba';
 
 interface ProductCategory {
   code: string;
@@ -150,7 +150,7 @@ export default function TopTabNavigatorLayout() {
       <Tab.Screen
         key={category.code}
         name={category.slug}
-        component={Prueba}
+        component={CategoryProductScreen}
         options={{
           title: category.name.charAt(0).toUpperCase() + category.name.slice(1).toLowerCase(),
         }}
