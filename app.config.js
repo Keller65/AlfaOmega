@@ -1,5 +1,3 @@
-import { withPlugins } from '@expo/config-plugins';
-
 const config = {
   expo: {
     name: 'Alfa & Omega',
@@ -17,7 +15,9 @@ const config = {
           android: {
             compileSdkVersion: 34,
             targetSdkVersion: 34,
-            kotlinVersion: '1.8.0',
+            extra: {
+              kotlinVersion: '1.8.0',
+            },
           },
         },
       ],
