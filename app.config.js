@@ -22,6 +22,11 @@ const config = {
         },
       ],
     ],
+    extra: {
+      eas: {
+        projectId: "2b76a3bb-99fb-4601-8265-be0f86eaec71"
+      }
+    }
   }
 };
 
