@@ -73,7 +73,7 @@ const ClientScreen = memo(() => {
         console.log('Cliente seleccionado en Zustand:', customer.cardName);
 
         router.push({
-          pathname: '/shop',
+          pathname: '/shop/(top-tabs)/category-product-list',
           params: {
             cardCode: customer.cardCode,
             priceListNum: customer.priceListNum
